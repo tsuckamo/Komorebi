@@ -269,30 +269,8 @@ fun MainRootScreen(
                 }
 
                 is AiConciergeAction.ReserveAuto -> {
-                    closeAiConcierge(true)
-                    reserveViewModel.addEpgReserve(
-                        keyword = action.keyword,
-                        networkId = 0,
-                        transportStreamId = 0,
-                        serviceId = 0,
-                        daysOfWeek = setOf(0, 1, 2, 3, 4, 5, 6),
-                        startHour = 0,
-                        startMinute = 0,
-                        endHour = 23,
-                        endMinute = 59,
-                        excludeKeyword = "",
-                        isTitleOnly = false,
-                        broadcastType = "GR,BS,BS4K,CS,SKY",
-                        isFuzzySearch = true,
-                        duplicateScope = "SameTitle",
-                        priority = 3,
-                        isEventRelay = true,
-                        isExactRecord = true,
-                        onFailure = { state.toastMessage = it },
-                        onSuccess = {
-                            state.toastMessage = "「${action.keyword}」の自動録画条件を登録しました"
-                        }
-                    )
+                    closeAiConcierge(false)
+                    state.autoReserveCreateKeyword = action.keyword
                 }
             }
         }

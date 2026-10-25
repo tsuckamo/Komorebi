@@ -64,7 +64,7 @@ fun AutoReserveCancellationDialog(
                             item { Text("取り消す関連予約: ${preview.programs.size}件", color = colors.textPrimary) }
                             items(preview.programs, key = { it.id }) { program ->
                                 val date = Instant.ofEpochMilli(program.startAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("M/d HH:mm"))
-                                Text("$date ${program.channel}\n${program.title}", color = colors.textSecondary)
+                                Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("$date ${program.channel}\n${program.title}") }
                             }
                         }
                         Text("このルールを削除し、今後の自動録画と関連予約を取り消します。録画済みの番組は残ります。", color = colors.textPrimary)

@@ -17,7 +17,8 @@ import javax.inject.Singleton
 class EpgStationReserveRepository @Inject constructor(
     private val api: EpgStationApi,
     private val channelCache: EpgStationChannelCache,
-    private val ruleCancellation: EpgStationRuleCancellation
+    private val ruleCancellation: EpgStationRuleCancellation,
+    private val ruleCreation: EpgStationRuleCreation
 ) : ReserveProvider {
     private companion object {
         private const val TAG = "EpgStationReserveRepo"
@@ -26,6 +27,9 @@ class EpgStationReserveRepository @Inject constructor(
     override suspend fun findAutoReserveCancellationCandidates(keyword: String) = ruleCancellation.candidates(keyword)
     override suspend fun previewAutoReserveCancellation(ruleId: Int) = ruleCancellation.preview(ruleId)
     override suspend fun confirmAutoReserveCancellation(token: String) = ruleCancellation.confirm(token)
+    override suspend fun findAutoReserveCreationCandidates(keyword: String) = ruleCreation.candidates(keyword)
+    override suspend fun previewAutoReserveCreation(programId: Long, options: AutoReserveCreateOptions) = ruleCreation.preview(programId, options)
+    override suspend fun confirmAutoReserveCreation(token: String) = ruleCreation.confirm(token)
 
     /** EPGStation のチャンネルを共通の予約チャンネルへ変換する。 */
     private fun mapChannel(

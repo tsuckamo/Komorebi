@@ -137,6 +137,14 @@ fun MainRootDialogs(
         )
     }
 
+    state.autoReserveCreateKeyword?.let { keyword ->
+        com.beeregg2001.komorebi.ui.reserve.AutoReserveCreationDialog(
+            keyword = keyword,
+            onDismiss = { state.autoReserveCreateKeyword = null; closeAiConcierge(true) },
+            onChanged = { reserveViewModel.refreshAll(showLoading = false) }
+        )
+    }
+
     if (hasSyncError) {
         val errorMessage = recordViewModel.syncProgress.value.error ?: "不明なエラー"
         SyncErrorDialog(
