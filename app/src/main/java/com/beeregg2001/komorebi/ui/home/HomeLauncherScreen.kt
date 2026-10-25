@@ -1045,6 +1045,7 @@ fun HomeLauncherScreen(
                                 activeSearchQuery = epgViewModel.activeSearchQuery.collectAsState().value,
                                 searchResults = epgViewModel.searchResults.collectAsState().value,
                                 isSearching = epgViewModel.isSearching.collectAsState().value,
+                                searchMessage = epgViewModel.searchMessage.collectAsState().value,
                                 onClearSearch = { epgViewModel.clearSearch() },
                                 timeFormat = timeFormat
                             )
