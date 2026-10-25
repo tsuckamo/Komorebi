@@ -167,7 +167,9 @@ class EpgStationRuleCancellation(
             append("ルール #${rule.id} / ${if (rule.reserveOption.enable) "有効" else "無効"}\n")
             append("対象局: ${selected ?: "放送波による指定"}\n$times\n")
             append(if (rule.isTimeSpecification) "時刻指定予約" else "EPG自動予約")
-            rule.searchOption.ignoreKeyword?.takeIf { it.isNotBlank() }?.let { append(" / 除外: $it") }
+            rule.searchOption.ignoreKeyword?.takeIf { it.isNotBlank() }?.let {
+                append(if (it == WEEKLY_RERUN_EXCLUSION && rule.searchOption.ignoreKeyRegExp == true) " / 再放送表示を除外" else " / 除外: $it")
+            }
         })
     }
 

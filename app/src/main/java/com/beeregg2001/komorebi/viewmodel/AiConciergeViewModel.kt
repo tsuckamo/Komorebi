@@ -134,7 +134,10 @@ class AiConciergeViewModel @Inject constructor(
                             "・番組表検索画面を開く: [SEARCH_EPG: キーワード | ジャンル | 日付 | 生中継(true/false) | チャンネル名]\n" +
                             "・録画リスト画面を開く: [SEARCH_REC: キーワード | ジャンル]\n" +
                             "・予約実行: [RESERVE_SINGLE: PROGRAM_ID]\n" +
-                            "・自動録画条件の登録: [RESERVE_AUTO: キーワード]\n" +
+                            "・毎週・毎日・継続して録画したい場合: [RESERVE_AUTO: 番組名の短いキーワード]\n" +
+                            "  例: 「イッテQを毎週録画して」 -> [RESERVE_AUTO: イッテQ]\n" +
+                            "  検索語は番組名だけです。『録画して』『record』『毎週』などの動作語を含めません。例: Record ZIP every week -> [RESERVE_AUTO: ZIP]\n" +
+                            "  このタグは番組表の候補と登録確認画面を開くだけです。局・曜日・対象番組はアプリ画面で利用者が確認します。登録済みとは言わず「候補を確認します」と答えてください。毎週録画の依頼を単発のRESERVE_SINGLEで代用しないでください。\n" +
                             "・毎週録画・自動録画をやめる場合: [REQ_CANCEL_AUTO: 番組名の短いキーワード]\n" +
                             "  例: 「イッテQの毎週録画をやめて」 -> [REQ_CANCEL_AUTO: イッテQ]\n" +
                             "  このタグは取り消し候補と確認画面を開くだけです。「候補を確認します」と案内し、取り消し済みとは絶対に言わないでください。対象を指定していない場合はキーワードを空欄にして一覧を開きます。実行はアプリの確認画面でユーザーが確定します。\n" +
@@ -347,7 +350,10 @@ class AiConciergeViewModel @Inject constructor(
         val reqSearchRecRegex = Regex("""\[REQ_REC_SEARCH:\s*([^\]]+)\]""")
 
         val resSingleRegex = Regex("""\[RESERVE_SINGLE:\s*([^\]\s]+).*?\]""")
-        val resAutoRegex = Regex("""\[RESERVE_AUTO:\s*([^\]\|]+).*?\]""")
+        val creation = com.beeregg2001.komorebi.data.repository.AiReservationCreationCommand
+        val resAutoRegex = creation.pattern
+        val createKeyword = creation.keyword(responseText)
+        val hasCreateCommand = responseText.contains("[RESERVE_AUTO:")
 
         val liveMatch = liveRegex.find(responseText)
         val recMatch = recRegex.find(responseText)
@@ -370,6 +376,8 @@ class AiConciergeViewModel @Inject constructor(
 
         if (allowActions && cancelKeyword != null) responseText = "毎週録画の取り消し候補を確認します。確認画面で確定するまでは変更しません。"
         else if (hasCancelCommand) responseText = "取り消しは実行していません。番組名を短く指定して、確認画面から操作してください。"
+        else if (allowActions && createKeyword != null) responseText = "毎週録画の候補を確認します。番組と条件を確認し、画面で確定するまでは登録しません。"
+        else if (hasCreateCommand) responseText = "登録は実行していません。番組名を短く指定して、確認画面から操作してください。"
         else if (!allowActions && responseText.isBlank()) responseText =
             "検索結果を確認しました。再生・予約する番組を指定してください。"
         else if (responseText.isBlank() && (liveMatch != null || recMatch != null)) responseText =
@@ -387,7 +395,7 @@ class AiConciergeViewModel @Inject constructor(
             if (it.id == messageId) it.copy(text = responseText, isThinking = false) else it
         }
 
-        if (!allowActions || (hasCancelCommand && cancelKeyword == null)) return
+        if (!allowActions || (hasCancelCommand && cancelKeyword == null) || (hasCreateCommand && createKeyword == null)) return
 
         val displayDelayMs = (responseText.length * 15L) + 1500L
 
@@ -395,6 +403,10 @@ class AiConciergeViewModel @Inject constructor(
             cancelKeyword != null -> {
                 // 他の操作タグが混じっていても、取り消しの読み取り専用確認画面だけを開く。
                 _pendingAction.emit(AiConciergeAction.RequestCancelAuto(cancelKeyword))
+            }
+            createKeyword != null -> {
+                // 単発予約などが混在しても、確認前の書き込みを発生させない。
+                _pendingAction.emit(AiConciergeAction.ReserveAuto(createKeyword))
             }
             liveMatch != null -> viewModelScope.launch {
                 delay(displayDelayMs)
@@ -470,10 +482,6 @@ class AiConciergeViewModel @Inject constructor(
                 }
             }
 
-            resAutoMatch != null -> viewModelScope.launch {
-                delay(displayDelayMs)
-                _pendingAction.emit(AiConciergeAction.ReserveAuto(resAutoMatch.groupValues[1].trim()))
-            }
         }
     }
 

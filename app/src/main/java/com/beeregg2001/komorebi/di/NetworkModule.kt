@@ -190,6 +190,7 @@ object NetworkModule {
             redactHeader(SettingsRepository.CF_ACCESS_CLIENT_SECRET_HEADER)
         }
         return trustAllClient(OkHttpClient.Builder())
+            .addInterceptor(com.beeregg2001.komorebi.data.api.EpgStationRuleWriteGuard())
             .addInterceptor(Interceptor { chain ->
                 val original = chain.request()
                 val base = runBlocking { settingsRepository.getEpgStationFullUrl() }

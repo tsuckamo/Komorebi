@@ -26,6 +26,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,6 +49,8 @@ fun AiTextInputDialog(
 ) {
     var text by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
+    val sendRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     val colors = KomorebiTheme.colors
 
     Dialog(
@@ -84,6 +88,14 @@ fun AiTextInputDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester)
+                            .focusProperties { down = sendRequester }
+                            .onPreviewKeyEvent { event ->
+                                if (event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown) {
+                                    keyboard?.hide()
+                                    sendRequester.requestFocus()
+                                    true
+                                } else false
+                            }
                             .background(
                                 colors.textPrimary.copy(alpha = 0.1f),
                                 RoundedCornerShape(8.dp)
@@ -112,7 +124,7 @@ fun AiTextInputDialog(
                         ) { Text("キャンセル") }
                         Button(
                             onClick = { onSubmit(text) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).focusRequester(sendRequester),
                             colors = ButtonDefaults.colors(
                                 containerColor = colors.accent,
                                 contentColor = if (colors.isDark) Color.Black else Color.White

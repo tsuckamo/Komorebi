@@ -56,6 +56,7 @@ class MainRootState {
     var isAiConciergeOpen by mutableStateOf(false)
     var showAiKeyboardInput by mutableStateOf(false)
     var autoReserveCancelKeyword by mutableStateOf<String?>(null)
+    var autoReserveCreateKeyword by mutableStateOf<String?>(null)
     var toastMessage by mutableStateOf<String?>(null)
 
     val aiTicketManager = AiFocusTicketManager()
@@ -142,7 +143,7 @@ class MainRootState {
                 editingCondition != null || selectedConditionReserveItem != null ||
                 selectedReserve != null || editingReserveItem != null ||
                 editingNewProgram != null || reserveToDelete != null ||
-                selectedProgramForAutoReserve != null || autoReserveCancelKeyword != null
+                selectedProgramForAutoReserve != null || autoReserveCancelKeyword != null || autoReserveCreateKeyword != null
     }
 
     fun getVisibleTabs(): List<String> {

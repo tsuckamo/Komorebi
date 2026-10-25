@@ -36,6 +36,16 @@ interface EpgStationApi {
     @GET("api/schedules/detail/{programId}")
     suspend fun getScheduleDetail(@Path("programId") programId: Long): EsScheduleProgramItem
 
+    @GET("api/schedules/detail/{programId}")
+    suspend fun getScheduleForRule(@Path("programId") programId: Long, @Query("isHalfWidth") isHalfWidth: Boolean = false): Response<EsScheduleProgramItem>
+
+    // POST だが検索専用。ルール・予約は作成しない。
+    @POST("api/schedules/search")
+    suspend fun previewRulePrograms(@Body body: EsScheduleSearchOption): Response<List<EsScheduleProgramItem>>
+
+    @POST("api/rules")
+    suspend fun createConfirmedRule(@Body body: EsAddRuleOption): Response<EsAddedRule>
+
     @GET("api/recorded")
     suspend fun getRecordedList(
         @Query("isHalfWidth") isHalfWidth: Boolean = false,

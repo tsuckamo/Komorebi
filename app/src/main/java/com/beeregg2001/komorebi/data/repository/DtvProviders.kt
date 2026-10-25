@@ -48,6 +48,12 @@ interface RecordProvider {
  * 3. 録画予約・自動予約ルールの機能を提供するインターフェース
  */
 interface ReserveProvider {
+    suspend fun findAutoReserveCreationCandidates(keyword: String): Result<List<AutoReserveCreateCandidate>> =
+        Result.failure(UnsupportedOperationException("AIからの確認付き毎週録画はEPGStation接続時に利用できます。"))
+    suspend fun previewAutoReserveCreation(programId: Long, options: AutoReserveCreateOptions): Result<AutoReserveCreatePreview> =
+        Result.failure(UnsupportedOperationException("この接続先では毎週録画の登録確認に対応していません。"))
+    suspend fun confirmAutoReserveCreation(token: String): Result<AutoReserveCreateResult> =
+        Result.failure(UnsupportedOperationException("接続先が変わりました。対象を選び直してください。"))
     suspend fun getReserves(): Result<List<ReserveItem>>
     suspend fun addReserve(request: ReserveRequest): Result<Unit>
     suspend fun updateReserve(reservationId: Int, request: ReserveRequest): Result<Unit>

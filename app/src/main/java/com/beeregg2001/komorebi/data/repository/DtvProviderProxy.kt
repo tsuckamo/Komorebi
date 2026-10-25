@@ -206,6 +206,9 @@ class DtvProviderProxy @Inject constructor(
 
     override suspend fun findAutoReserveCancellationCandidates(keyword: String) =
         getReserveProvider().findAutoReserveCancellationCandidates(keyword)
+    override suspend fun findAutoReserveCreationCandidates(keyword: String) = getReserveProvider().findAutoReserveCreationCandidates(keyword)
+    override suspend fun previewAutoReserveCreation(programId: Long, options: AutoReserveCreateOptions) = getReserveProvider().previewAutoReserveCreation(programId, options)
+    override suspend fun confirmAutoReserveCreation(token: String) = getReserveProvider().confirmAutoReserveCreation(token)
     override suspend fun previewAutoReserveCancellation(ruleId: Int) =
         getReserveProvider().previewAutoReserveCancellation(ruleId)
     override suspend fun confirmAutoReserveCancellation(token: String) =
