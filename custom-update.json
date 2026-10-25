@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "packageName": "com.beeregg2001.Komorebi",
-  "versionCode": 24,
-  "versionName": "1.1.1-custom.24",
+  "versionCode": 25,
+  "versionName": "1.1.1-custom.25",
   "releaseNotes": "カスタム機能を維持した検証済みの個人版です。",
   "abi": "armeabi-v7a",
   "size": 124052497,
-  "sha256": "2ef11a51919467c99fb48dbb56d5aa51aafdcc1d01a29bc90dfd6bb00c63920d",
-  "apkUrl": "https://github.com/tsuckamo/Komorebi/releases/download/custom-24/Komorebi-custom-armeabi-v7a-release.apk"
+  "sha256": "232aa2e96741a189438878faad80e2588fa6acd947d2cf71d9ad3ade759ef321",
+  "apkUrl": "https://github.com/tsuckamo/Komorebi/releases/download/custom-25/Komorebi-custom-armeabi-v7a-release.apk"
 }
