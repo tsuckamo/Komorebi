@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.Normalizer
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
@@ -49,6 +48,7 @@ data class EpgSearchResultItem(
 class EpgRepository @Inject constructor(
     @ApplicationContext private val context: Context, // ★ 追加: キャッシュディレクトリを使用するためContextを注入
     private val epgProvider: EpgProvider,
+    private val programSearch: EpgProgramSearch,
     private val epgCacheDao: EpgCacheDao,
     private val gson: Gson
 ) {
@@ -115,116 +115,14 @@ class EpgRepository @Inject constructor(
 
     // ==========================================
 
-    private fun normalizeForSearch(text: String): String {
-        val normalized = Normalizer.normalize(text, Normalizer.Form.NFKC)
-        return normalized.lowercase()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun searchFuturePrograms(
-        query: String = "",
-        genre: String? = null,
-        dateStr: String? = null,
-        isLiveOnly: Boolean = false,
-        channelName: String? = null
-    ): List<EpgSearchResultItem> {
-
-        val isOrSearch = query.contains(",") || query.contains("、")
-        val delimiters = if (isOrSearch) Regex("[,、]+") else Regex("[\\s]+")
-        val keywords =
-            query.split(delimiters).map { normalizeForSearch(it.trim()) }.filter { it.isNotBlank() }
-
-        if (keywords.isEmpty() && genre.isNullOrBlank() && dateStr.isNullOrBlank() && channelName.isNullOrBlank() && !isLiveOnly) {
-            return emptyList()
-        }
-
-        val results = mutableListOf<EpgSearchResultItem>()
-        val nowMs = System.currentTimeMillis()
-
-        val targetTvDate = try {
-            dateStr?.takeIf { it.isNotBlank() }?.let {
-                java.time.LocalDate.parse(it.replace("/", "-"))
-            }
-        } catch (e: Exception) {
-            null
-        }
-
-        memoryCache.values.flatten().forEach { wrapper ->
-            if (!channelName.isNullOrBlank() && !wrapper.channel.name.contains(
-                    channelName,
-                    ignoreCase = true
-                )
-            ) {
-                return@forEach
-            }
-
-            wrapper.programs.forEach { prog ->
-                try {
-                    val startTimeMs =
-                        OffsetDateTime.parse(prog.start_time).toInstant().toEpochMilli()
-                    if (startTimeMs > nowMs) {
-
-                        if (targetTvDate != null) {
-                            val startDt = OffsetDateTime.parse(prog.start_time)
-                            val base = startDt.withHour(4).withMinute(0).withSecond(0).withNano(0)
-                            val tvDate = if (startDt.hour < 4) base.minusDays(1)
-                                .toLocalDate() else base.toLocalDate()
-                            if (tvDate != targetTvDate) return@forEach
-                        }
-
-                        if (!genre.isNullOrBlank()) {
-                            val matchGenre = (prog.genres?.any {
-                                it.major.contains(genre) || it.middle.contains(genre)
-                            } == true) || prog.title.contains(genre)
-                            if (!matchGenre) return@forEach
-                        }
-
-                        if (isLiveOnly) {
-                            val detailText =
-                                prog.detail?.entries?.joinToString(" ") { "${it.key} ${it.value}" }
-                                    ?: ""
-                            val title = prog.title ?: ""
-                            val desc = prog.description ?: ""
-                            val matchLive =
-                                title.contains("[生]") || title.contains("【生】") || title.contains("生中継") || title.contains(
-                                    "生放送"
-                                ) || title.contains("LIVE", ignoreCase = true) ||
-                                        desc.contains("生中継") || desc.contains("生放送") || detailText.contains(
-                                    "生中継"
-                                ) || detailText.contains("生放送")
-                            if (!matchLive) return@forEach
-                        }
-
-                        if (keywords.isNotEmpty()) {
-                            val detailText =
-                                prog.detail?.entries?.joinToString(" ") { "${it.key} ${it.value}" }
-                                    ?: ""
-                            val combinedDesc =
-                                "${wrapper.channel.name} ${prog.title} ${prog.description} $detailText"
-                            val normalizedDesc = normalizeForSearch(combinedDesc)
-
-                            val isMatch = if (isOrSearch) {
-                                keywords.any { k -> normalizedDesc.contains(k) }
-                            } else {
-                                keywords.all { k -> normalizedDesc.contains(k) }
-                            }
-                            if (!isMatch) return@forEach
-                        }
-
-                        results.add(EpgSearchResultItem(prog, wrapper.channel))
-                    }
-                } catch (e: Exception) { /* ignore */
-                }
-            }
-        }
-
-        return results.sortedBy {
-            try {
-                OffsetDateTime.parse(it.program.start_time).toInstant().toEpochMilli()
-            } catch (e: Exception) {
-                0L
-            }
-        }
+    @OptIn(UnstableApi::class)
+    suspend fun searchPrograms(
+        query: String = "", genre: String? = null, dateStr: String? = null,
+        isLiveOnly: Boolean = false, channelName: String? = null
+    ): EpgSearchReport {
+        val report = programSearch.search(EpgSearchCriteria(query, genre, dateStr, isLiveOnly, channelName))
+        Log.i("EPG_SEARCH", report.summary())
+        return report
     }
 
     fun hasCacheForType(channelType: String): Boolean {

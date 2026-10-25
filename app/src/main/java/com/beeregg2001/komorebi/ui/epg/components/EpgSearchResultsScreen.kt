@@ -31,6 +31,7 @@ import com.beeregg2001.komorebi.ui.theme.KomorebiTheme
 fun EpgSearchResultsScreen(
     searchResults: List<UiSearchResultItem>,
     isSearching: Boolean,
+    searchMessage: String?,
     reserves: List<ReserveItem>,
     onProgramClick: (EpgProgram) -> Unit,
     listFocusRequester: FocusRequester,
@@ -65,7 +66,7 @@ fun EpgSearchResultsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "一致する未来の番組が見つかりませんでした",
+                    text = searchMessage ?: "この条件に一致する放送中・放送予定の番組が見つかりませんでした",
                     style = MaterialTheme.typography.titleLarge,
                     color = colors.textSecondary
                 )
@@ -85,6 +86,9 @@ fun EpgSearchResultsScreen(
                     .focusGroup()
                     .focusRestorer()
             ) {
+                searchMessage?.let { message ->
+                    item { Text(message, color = colors.textSecondary) }
+                }
                 itemsIndexed(searchResults, key = { _, item -> item.program.id }) { index, item ->
                     val reserve = reserves.find { it.program.id == item.program.id }
 

@@ -15,6 +15,7 @@ import com.beeregg2001.komorebi.data.SettingsRepository
 import com.beeregg2001.komorebi.data.model.EpgChannel
 import com.beeregg2001.komorebi.data.model.EpgChannelWrapper
 import com.beeregg2001.komorebi.data.model.EpgProgram
+import com.beeregg2001.komorebi.data.repository.EpgSearchReport
 import com.beeregg2001.komorebi.data.repository.EpgRepository
 import com.beeregg2001.komorebi.data.repository.LiveProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -82,6 +83,8 @@ class EpgViewModel @OptIn(UnstableApi::class)
     private val _searchResults = MutableStateFlow<List<UiSearchResultItem>>(emptyList())
     val searchResults: StateFlow<List<UiSearchResultItem>> = _searchResults.asStateFlow()
 
+    private val _searchMessage = MutableStateFlow<String?>(null)
+    val searchMessage = _searchMessage.asStateFlow()
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
@@ -176,6 +179,7 @@ class EpgViewModel @OptIn(UnstableApi::class)
     ) {
         viewModelScope.launch {
             _isSearching.value = true
+            _searchMessage.value = null
             val displayQuery = listOfNotNull(
                 keyword.takeIf { it.isNotBlank() },
                 channelName?.takeIf { it.isNotBlank() },
@@ -187,8 +191,8 @@ class EpgViewModel @OptIn(UnstableApi::class)
             if (displayQuery.isNotBlank()) addSearchHistory(displayQuery)
 
             try {
-                val rawResults = withContext(Dispatchers.Default) {
-                    repository.searchFuturePrograms(
+                val report = withContext(Dispatchers.IO) {
+                    repository.searchPrograms(
                         keyword,
                         genre,
                         dateStr,
@@ -197,7 +201,8 @@ class EpgViewModel @OptIn(UnstableApi::class)
                     )
                 }
 
-                val topMatches = rawResults.sortedBy {
+                _searchMessage.value = if (report.usedTitleFallback) "短縮タイトルで見つかった候補です" else null
+                val topMatches = report.items.sortedBy {
                     try {
                         OffsetDateTime.parse(it.program.start_time)
                     } catch (e: Exception) {
@@ -219,7 +224,9 @@ class EpgViewModel @OptIn(UnstableApi::class)
 
                 _searchResults.value = results
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.e("EpgViewModel", "Search Error", e)
+                _searchMessage.value = "番組表を取得・検索できませんでした。接続先や検索条件を確認して再試行してください。"
                 _searchResults.value = emptyList()
             } finally {
                 _isSearching.value = false
@@ -228,42 +235,14 @@ class EpgViewModel @OptIn(UnstableApi::class)
     }
 
     suspend fun searchSilently(
-        keyword: String,
-        genre: String? = null,
-        dateStr: String? = null,
-        isLiveOnly: Boolean = false,
-        channelName: String? = null
-    ): List<UiSearchResultItem> {
-        return try {
-            val rawResults = withContext(Dispatchers.Default) {
-                repository.searchFuturePrograms(keyword, genre, dateStr, isLiveOnly, channelName)
-            }
-
-            val topMatches = rawResults.sortedBy {
-                try {
-                    OffsetDateTime.parse(it.program.start_time)
-                } catch (e: Exception) {
-                    OffsetDateTime.MAX
-                }
-            }.take(100)
-
-            withContext(Dispatchers.IO) {
-                topMatches.map { item ->
-                    async {
-                        UiSearchResultItem(
-                            program = item.program,
-                            channel = item.channel,
-                            logoUrl = getLogoUrl(item.channel)
-                        )
-                    }
-                }.awaitAll()
-            }
-        } catch (e: Exception) {
-            emptyList()
-        }
+        keyword: String, genre: String? = null, dateStr: String? = null,
+        isLiveOnly: Boolean = false, channelName: String? = null
+    ): EpgSearchReport = withContext(Dispatchers.IO) {
+        repository.searchPrograms(keyword, genre, dateStr, isLiveOnly, channelName)
     }
 
     fun clearSearch() {
+        _searchMessage.value = null
         _activeSearchQuery.value = ""
         _searchQuery.value = ""
         _searchResults.value = emptyList()

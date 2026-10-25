@@ -87,6 +87,7 @@ fun EpgNavigationContainer(
     activeSearchQuery: String,
     searchResults: List<UiSearchResultItem>,
     isSearching: Boolean,
+    searchMessage: String?,
     onClearSearch: () -> Unit,
     timeFormat: String
 ) {
@@ -320,6 +321,7 @@ fun EpgNavigationContainer(
                         EpgSearchResultsScreen(
                             searchResults = searchResults,
                             isSearching = isSearching,
+                            searchMessage = searchMessage,
                             reserves = reserves,
                             onProgramClick = { onProgramSelected(it) },
                             listFocusRequester = searchResultsListRequester,

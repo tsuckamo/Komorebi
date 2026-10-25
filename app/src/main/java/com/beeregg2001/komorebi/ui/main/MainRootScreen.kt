@@ -219,14 +219,17 @@ fun MainRootScreen(
 
                 is AiConciergeAction.ReqEpgSearch -> {
                     scope.launch {
-                        val results = epgViewModel.searchSilently(
-                            action.keyword,
-                            action.genre,
-                            action.date,
-                            action.isLiveOnly,
-                            action.channelName
-                        )
-                        aiConciergeViewModel.submitSilentSearchResult(action.keyword, results)
+                        try {
+                            val report = epgViewModel.searchSilently(
+                                action.keyword, action.genre, action.date, action.isLiveOnly, action.channelName
+                            )
+                            aiConciergeViewModel.submitSilentSearchResult(report)
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.e("EPG_SEARCH", "AI program search failed", e)
+                            aiConciergeViewModel.submitEpgSearchError()
+                        }
                     }
                 }
 
