@@ -12,7 +12,12 @@ plugins {
 
 // 個人用接続先はGit管理外のlocal.propertiesから読み、公開ソースには含めない。
 val localAiDefaults = Properties().apply {
-    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    if (!providers.gradleProperty("publicRelease").isPresent) {
+        rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    }
+}
+val customRelease = Properties().apply {
+    rootProject.file("custom-release.properties").inputStream().use { load(it) }
 }
 fun localAiString(key: String): String = "\"" + localAiDefaults.getProperty(key, "")
     .replace("\\", "\\\\").replace("\"", "\\\"") + "\""
@@ -35,8 +40,8 @@ android {
         applicationId = "com.beeregg2001.Komorebi"
         minSdk = 24
         targetSdk = 34
-        versionCode = 23
-        versionName = "1.1.1-tsuckamo.4"
+        versionCode = 19 // 数値を1つ上げる
+        versionName = "1.1.1-Stable"
         buildConfigField("String", "LOCAL_AI_BASE_URL", localAiString("local.ai.baseUrl"))
         buildConfigField("String", "LOCAL_AI_MODEL", localAiString("local.ai.model"))
         buildConfigField("String", "LOCAL_WHISPER_BASE_URL", localAiString("local.whisper.baseUrl"))
@@ -97,6 +102,11 @@ android {
             )
         }
     }
+}
+// 本家のバージョン欄は保ち、個人版は別ファイルの単調増加番号で管理する。
+android.defaultConfig {
+    versionCode = customRelease.getProperty("versionCode").toInt()
+    versionName = customRelease.getProperty("versionName")
 }
 configurations.all {
     resolutionStrategy {

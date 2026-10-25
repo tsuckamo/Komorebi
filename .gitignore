@@ -19,3 +19,13 @@ tools/ts_pmt_monitor/build/
 tools/ts_synth_gen/build/
 tools/ts_index_builder/build/
 /gradle/gradle-daemon-jvm.properties
+
+# 個人用自動更新の秘密・作業結果は公開しない。
+*.p12
+*.jks
+*.keystore
+*.dpapi.xml
+/.custom-update/
+/update-config.json
+__pycache__/
+*.pyc
