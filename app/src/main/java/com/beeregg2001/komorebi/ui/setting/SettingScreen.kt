@@ -66,6 +66,7 @@ fun SettingsScreen(
     val currentTime = remember { LocalTime.now() }
     val backgroundBrush = getSeasonalBackgroundBrush(KomorebiTheme.theme, currentTime)
 
+    val aiSettings by repository.aiSettings.collectAsState(initial = com.beeregg2001.komorebi.data.model.AiSettings())
     val prefs = rememberSettingPreferences(repository)
     val uiState = rememberSettingUiState(initialCategoryIndex)
 
@@ -1047,8 +1048,8 @@ fun SettingsScreen(
                         ) { uiState.restoreFocusRequester = it; uiState.restoreCategoryIndex = 7 }
 
                         8 -> LabSettingsContent(
-                            prefs.geminiApiKey,
-                            prefs.geminiApiKeyStatus,
+                            if (aiSettings.isLocal) "local" else prefs.geminiApiKey,
+                            if (aiSettings.isLocal) "LOCAL" else prefs.geminiApiKeyStatus,
                             isValidatingGeminiApiKey,
                             prefs.favoriteBaseballTeams,
                             prefs.labAllowMirakurunDual,
@@ -1056,7 +1057,7 @@ fun SettingsScreen(
                             itemFocusRequesters[8][1],
                             itemFocusRequesters[8][2],
                             categoryFocusRequesters[8],
-                            { uiState.activeDialog = SettingDialogState.GeminiSetup },
+                            { uiState.activeDialog = SettingDialogState.AiSetup },
                             {
                                 uiState.activeDialog = SettingDialogState.MultiSelection(
                                     "フォロー球団の選択",
@@ -1149,6 +1150,15 @@ fun SettingsScreen(
                 { closeDialog() })
 
             is SettingDialogState.Licenses -> OpenSourceLicensesScreen(onBack = { closeDialog() })
+            is SettingDialogState.AiSetup -> AiSettingsDialog(
+                initial = aiSettings,
+                onDismiss = { closeDialog() },
+                onSave = { value -> scope.launch { repository.saveAiSettings(value); closeDialog() } },
+                onGeminiSetup = { value -> scope.launch {
+                    repository.saveAiSettings(value)
+                    uiState.activeDialog = SettingDialogState.GeminiSetup
+                } }
+            )
             is SettingDialogState.GeminiSetup -> {
                 val localIp by viewModel.localIpAddress.collectAsState()
                 GeminiSetupDialog(

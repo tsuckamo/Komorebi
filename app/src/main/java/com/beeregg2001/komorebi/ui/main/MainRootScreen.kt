@@ -106,7 +106,6 @@ fun MainRootScreen(
     // =========================================================================================
 
     val timeFormat by settingsViewModel.timeFormat.collectAsState()
-    val geminiApiKey by settingsViewModel.geminiApiKey.collectAsState(initial = "")
 
     val closeAiConcierge = { restoreFocus: Boolean ->
         state.isAiConciergeOpen = false
@@ -768,7 +767,6 @@ fun MainRootScreen(
                 isSettingsInitialized = isSettingsInitialized,
                 hasSyncError = hasSyncError,
                 detailFocusRequester = detailFocusRequester,
-                apiKey = geminiApiKey,
                 onExitApp = onExitApp,
                 closeSettingsAndRefresh = closeSettingsAndRefresh,
                 closeAiConcierge = closeAiConcierge,

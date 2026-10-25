@@ -41,6 +41,7 @@ import com.beeregg2001.komorebi.util.AudioRecorderHelper
 import com.beeregg2001.komorebi.util.TitleNormalizer
 import com.beeregg2001.komorebi.util.UpdateState
 import com.beeregg2001.komorebi.viewmodel.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
@@ -63,7 +64,6 @@ fun MainRootDialogs(
     isSettingsInitialized: Boolean,
     hasSyncError: Boolean,
     detailFocusRequester: FocusRequester,
-    apiKey: String, // ★ 追加: 取得したAPIキーを受け取る
     onExitApp: () -> Unit,
     closeSettingsAndRefresh: () -> Unit,
     closeAiConcierge: (Boolean) -> Unit,
@@ -76,10 +76,9 @@ fun MainRootDialogs(
     // AIコンシェルジュ 音声入力ロジック
     // ========================================================================
     val aiTicketManager = state.aiTicketManager
-    val isSpeechSupported = remember {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-        context.packageManager.resolveActivity(intent, 0) != null
-    }
+    val isSpeechSupported by aiConciergeViewModel.isSpeechConfigured.collectAsState()
+    val isAiConfigured by aiConciergeViewModel.isConfigured.collectAsState()
+    val aiMessages by aiConciergeViewModel.chatHistory.collectAsState()
 
     val audioRecorderHelper = remember { AudioRecorderHelper(context) }
     var isRecordingVoice by remember { mutableStateOf(false) }
@@ -92,25 +91,37 @@ fun MainRootDialogs(
         }
     }
 
+    var isFinishingVoice by remember { mutableStateOf(false) }
+    DisposableEffect(audioRecorderHelper) { onDispose { audioRecorderHelper.release() } }
     val stopRecordingAndSend = {
-        if (isRecordingVoice) {
-            val file = audioRecorderHelper.stopRecording()
+        if (isRecordingVoice && !isFinishingVoice) {
             isRecordingVoice = false
-
-            if (file != null && file.exists() && file.length() > 0) {
-                Log.i("AI_Concierge", "🎙️ 録音完了、Geminiに送信します (${file.length()} bytes)")
-                val audioBytes = file.readBytes()
-
-                aiConciergeViewModel.sendAudioWithContext(
-                    audioBytes = audioBytes,
-                    liveChannels = channelViewModel.groupedChannels.value,
-                    recentRecordings = recordViewModel.recentRecordings.value,
-                    groupedSeries = recordViewModel.groupedSeries.value,
-                    activeReserves = reserveViewModel.reserves.value
-                )
-            } else {
-                state.toastMessage = "音声が短すぎるか、録音できませんでした"
+            isFinishingVoice = true
+            scope.launch {
+                try {
+                    val file = audioRecorderHelper.stopRecording()
+                    val bytes = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                        file?.let { try { it.readBytes() } finally { it.delete() } }
+                    }
+                    if (bytes != null && state.isAiConciergeOpen) {
+                        aiConciergeViewModel.sendAudioWithContext(
+                            audioBytes = bytes,
+                            liveChannels = channelViewModel.groupedChannels.value,
+                            recentRecordings = recordViewModel.recentRecordings.value,
+                            groupedSeries = recordViewModel.groupedSeries.value,
+                            activeReserves = reserveViewModel.reserves.value
+                        )
+                    } else if (state.isAiConciergeOpen) {
+                        state.toastMessage = "音声を録音できませんでした。リモコンのマイクを確認してください。"
+                    }
+                } finally { isFinishingVoice = false }
             }
+        }
+    }
+    LaunchedEffect(state.isAiConciergeOpen) {
+        if (!state.isAiConciergeOpen && isRecordingVoice) {
+            isRecordingVoice = false
+            audioRecorderHelper.stopRecording()?.delete()
         }
     }
 
@@ -465,7 +476,8 @@ fun MainRootDialogs(
         isSpeechSupported = isSpeechSupported,
         isRecording = isRecordingVoice,
         ticketManager = aiTicketManager,
-        apiKey = apiKey, // ★ 追加: 取得したAPIキーを渡す
+        isConfigured = isAiConfigured,
+        isBusy = isFinishingVoice || aiMessages.any { it.isThinking },
         onGoToSettings = onGoToSettings, // ★ 追加: 設定への誘導処理
         onClose = { closeAiConcierge(true) },
         onMicLongPressStart = {
@@ -474,8 +486,8 @@ fun MainRootDialogs(
                     Manifest.permission.RECORD_AUDIO
                 ) == PackageManager.PERMISSION_GRANTED
             ) {
-                audioRecorderHelper.startRecording()
-                isRecordingVoice = true
+                isRecordingVoice = audioRecorderHelper.startRecording()
+                if (!isRecordingVoice) state.toastMessage = "マイクを開始できませんでした。文字入力をご利用ください。"
             } else {
                 permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
