@@ -22,6 +22,9 @@ interface RecordProvider {
     suspend fun getRecordedPrograms(page: Int, limit: Int): RecordedApiResponse =
         getRecordedPrograms(page)
     suspend fun getRecordedProgram(videoId: Int): Result<RecordedProgram>
+    // 未対応のバックエンドでは、サーバーやローカルのデータを変更しない。
+    suspend fun deleteRecordedProgram(recordedId: Int): Result<Unit> =
+        Result.failure(UnsupportedOperationException("この接続先は録画削除に対応していません。"))
     suspend fun searchRecordedPrograms(keyword: String, page: Int = 1): RecordedApiResponse
 
     suspend fun getRecordStreamUrl(
