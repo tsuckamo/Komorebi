@@ -30,7 +30,8 @@ class EpgStationRecordRepository @Inject constructor(
     private val api: EpgStationApi,
     private val channelCache: EpgStationChannelCache,
     private val okHttpClient: OkHttpClient,
-    private val jikkyoChannelResolver: JikkyoChannelResolver
+    private val jikkyoChannelResolver: JikkyoChannelResolver,
+    private val recordingDeletion: EpgStationRecordingDeletion
 ) : RecordProvider {
     private var streamId: Int? = null
     private var qualities: List<StreamQuality>? = null
@@ -255,6 +256,15 @@ class EpgStationRecordRepository @Inject constructor(
             Result.success(mapRecorded(api.getRecordedDetail(videoId), true))
         } catch (e: Exception) {
             Result.failure(Exception("録画番組の取得に失敗しました。\n[詳細]: ${e.message}", e))
+        }
+    }
+
+    override suspend fun deleteRecordedProgram(recordedId: Int): Result<Unit> {
+        return recordingDeletion.delete(recordedId).onSuccess {
+            videoFileIdByRecordedId.remove(recordedId)
+            recordedByVideoFileId.entries.removeAll { it.value.id == recordedId }
+            seriesCache = null
+            seriesCacheAt = 0L
         }
     }
 

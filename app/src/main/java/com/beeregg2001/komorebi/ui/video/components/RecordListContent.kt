@@ -92,7 +92,8 @@ fun RecordListContent(
     timeFormat: String = "24H",
     // ★ 追加: 自動予約用のキーワードリストと、予約ボタン押下時のコールバック
     autoReserveKeywords: List<String> = emptyList(),
-    onAutoReserveClick: (RecordedProgram) -> Unit = {}
+    onAutoReserveClick: (RecordedProgram) -> Unit = {},
+    onDeleteClick: (RecordedProgram) -> Unit = {}
 ) {
     val colors = KomorebiTheme.colors
     val scope = rememberCoroutineScope()
@@ -423,8 +424,8 @@ fun RecordListContent(
                                     modifier = Modifier.focusProperties {
                                         down = FocusRequester.Cancel; right = FocusRequester.Cancel
                                     },
-                                    enabled = false,
-                                    onClick = { })
+                                    enabled = backendType == "EPGSTATION" && focusedProgram != null,
+                                    onClick = { focusedProgram?.let(onDeleteClick) })
                             }
                         }
                     }

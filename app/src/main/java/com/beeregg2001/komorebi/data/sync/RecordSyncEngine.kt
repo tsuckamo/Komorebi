@@ -22,6 +22,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
@@ -478,6 +479,26 @@ class RecordSyncEngine @Inject constructor(
             engineScope.launch {
                 startDictionaryResolutionLoop()
             }
+        }
+    }
+
+    /** 同期中に取得済みの古い一覧が、削除した録画を再登録しないよう排他制御する。 */
+    suspend fun deleteRecordedProgram(recordedId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        syncMutex.withLock {
+            if (settingsRepository.backendType.first() != "EPGSTATION") {
+                return@withLock Result.failure(IllegalStateException("録画削除はEPGStation接続時のみ利用できます。"))
+            }
+            val result = recordProvider.deleteRecordedProgram(recordedId)
+            if (result.isSuccess) {
+                // サーバーでの成功後は、画面を閉じてもローカルの反映を完了させる。
+                withContext(NonCancellable) {
+                    db.withTransaction {
+                        db.recordedProgramDao().deleteByIds(listOf(recordedId))
+                        db.watchHistoryDao().deleteById(recordedId)
+                    }
+                }
+            }
+            result
         }
     }
 

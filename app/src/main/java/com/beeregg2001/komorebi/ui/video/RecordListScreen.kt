@@ -147,6 +147,9 @@ fun RecordListScreen(
     val seriesFocusProgramId by viewModel.seriesFocusProgramId.collectAsState()
     val programDetail by viewModel.programDetail.collectAsState()
     val isRecLoading by viewModel.isRecordingLoading.collectAsState()
+    val isDeletingRecording by viewModel.isDeletingRecording.collectAsState()
+    var pendingDeleteProgram by remember { mutableStateOf<RecordedProgram?>(null) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
 
     val menuState = rememberRecordListMenuState()
     val focuses = rememberRecordListFocusRequesters()
@@ -592,7 +595,11 @@ fun RecordListScreen(
                                     },
                                     timeFormat = timeFormat,
                                     autoReserveKeywords = autoReserveKeywords,
-                                    onAutoReserveClick = onAutoReserveClick
+                                    onAutoReserveClick = onAutoReserveClick,
+                                    onDeleteClick = { program ->
+                                        pendingDeleteProgram = program
+                                        deleteError = null
+                                    }
                                 )
                             }
                         }
@@ -781,6 +788,33 @@ fun RecordListScreen(
             onSortOpen = { menuState.isSortMenuOpen = true }, // ★ 追加
             onKeyboardActiveClick = { },
             onBackButtonFocusChanged = { menuState.isBackButtonFocused = it }
+        )
+    }
+
+    pendingDeleteProgram?.let { program ->
+        RecordDeleteDialog(
+            program = program,
+            isDeleting = isDeletingRecording,
+            error = deleteError,
+            onDismiss = {
+                pendingDeleteProgram = null
+                deleteError = null
+            },
+            onConfirm = {
+                deleteError = null
+                viewModel.deleteRecordedProgram(program.id) { result ->
+                    result.onSuccess {
+                        pendingDeleteProgram = null
+                        focusedProgram = null
+                        lastKnownFocusedId = null
+                        menuState.closeAllMenus()
+                        pagedRecordings.refresh()
+                        ticketManager.issue(FocusTicket.LIST_TOP)
+                    }.onFailure {
+                        deleteError = it.message ?: "録画の削除に失敗しました。"
+                    }
+                }
+            }
         )
     }
 }

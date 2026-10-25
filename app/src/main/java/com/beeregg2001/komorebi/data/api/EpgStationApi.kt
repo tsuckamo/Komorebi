@@ -51,6 +51,9 @@ interface EpgStationApi {
         @Query("isHalfWidth") isHalfWidth: Boolean = false
     ): EsRecordedItem
 
+    @DELETE("api/recorded/{recordedId}")
+    suspend fun deleteRecorded(@Path("recordedId") recordedId: Int): Response<Unit>
+
     @GET("api/recorded/{recordedId}/next-up")
     suspend fun getNextUp(
         @Path("recordedId") recordedId: Int,

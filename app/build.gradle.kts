@@ -26,8 +26,8 @@ android {
         applicationId = "com.beeregg2001.Komorebi"
         minSdk = 24
         targetSdk = 34
-        versionCode = 19 // 数値を1つ上げる
-        versionName = "1.1.1-Stable"
+        versionCode = 20
+        versionName = "1.1.1-tsuckamo.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -119,6 +119,8 @@ ksp {
 //}
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // 1. Compose BOM を最新に近いバージョンに更新 (ここが最重要)

@@ -29,6 +29,7 @@ import com.beeregg2001.komorebi.common.UrlBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -182,6 +183,49 @@ class RecordViewModel @Inject constructor(
     val programDetail: StateFlow<RecordedProgram?> = _programDetail.asStateFlow()
 
     private var detailFetchJob: Job? = null
+
+    private val _isDeletingRecording = MutableStateFlow(false)
+    val isDeletingRecording: StateFlow<Boolean> = _isDeletingRecording.asStateFlow()
+
+    fun deleteRecordedProgram(recordedId: Int, onComplete: (Result<Unit>) -> Unit) {
+        if (_isDeletingRecording.value) return
+        _isDeletingRecording.value = true
+        viewModelScope.launch {
+            val result = try {
+                val deletion = syncEngine.deleteRecordedProgram(recordedId)
+                if (deletion.isSuccess) {
+                    detailFetchJob?.cancel()
+                    _programDetail.value = null
+                    // Roomの一覧は自動更新される。別途保持しているシリーズ・放送局も更新する。
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val series = programDao.getGroupedSeries()
+                            val channels = programDao.getDistinctChannels()
+                            val apiSeries = epgStationRecordRepository.getSeriesList()
+                            if (apiSeries != null) {
+                                epgSeriesItems = apiSeries
+                                buildEpgSeriesAndChannelMaps(apiSeries, series, channels)
+                            } else {
+                                buildSeriesAndChannelMaps(series, channels)
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w(TAG, "削除後のシリーズ情報を更新できませんでした", e)
+                    }
+                }
+                deletion
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(IllegalStateException("録画の削除または一覧の更新に失敗しました。EPGStationで状態を確認してください。", e))
+            } finally {
+                _isDeletingRecording.value = false
+            }
+            onComplete(result)
+        }
+    }
 
     fun clearSyncError() {
         syncEngine.clearError()
