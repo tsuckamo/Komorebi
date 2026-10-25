@@ -2,6 +2,8 @@ package com.beeregg2001.komorebi.data
 
 import android.content.Context
 import android.util.Log
+import com.beeregg2001.komorebi.BuildConfig
+import com.beeregg2001.komorebi.data.model.AiSettings
 import com.beeregg2001.komorebi.common.UrlBuilder
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -71,6 +73,13 @@ class SettingsRepository @Inject constructor(
         val POST_RECORDING_BATCH_LIST = stringPreferencesKey("post_recording_batch_list")
         val FAVORITE_BASEBALL_TEAMS = stringPreferencesKey("favorite_baseball_teams")
         val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
+        val AI_PROVIDER = stringPreferencesKey("ai_provider")
+        val LOCAL_AI_URL = stringPreferencesKey("local_ai_url")
+        val LOCAL_AI_MODEL = stringPreferencesKey("local_ai_model")
+        val LOCAL_AI_TOKEN = stringPreferencesKey("local_ai_token")
+        val WHISPER_URL = stringPreferencesKey("whisper_url")
+        val WHISPER_MODEL = stringPreferencesKey("whisper_model")
+        val WHISPER_TOKEN = stringPreferencesKey("whisper_token")
         val GEMINI_API_KEY_STATUS = stringPreferencesKey("gemini_api_key_status")
         val ENABLE_AI_NORMALIZATION = stringPreferencesKey("enable_ai_normalization")
 
@@ -181,6 +190,30 @@ class SettingsRepository @Inject constructor(
     val favoriteBaseballTeams: Flow<String> =
         context.dataStore.data.map { it[FAVORITE_BASEBALL_TEAMS] ?: "[]" }
     val geminiApiKey: Flow<String> = context.dataStore.data.map { it[GEMINI_API_KEY] ?: "" }
+
+    val aiSettings: Flow<AiSettings> = context.dataStore.data.map {
+        AiSettings(
+            provider = it[AI_PROVIDER] ?: if (BuildConfig.LOCAL_AI_BASE_URL.isNotBlank()) "LOCAL" else "GEMINI",
+            baseUrl = it[LOCAL_AI_URL] ?: BuildConfig.LOCAL_AI_BASE_URL,
+            model = it[LOCAL_AI_MODEL] ?: BuildConfig.LOCAL_AI_MODEL,
+            apiKey = it[LOCAL_AI_TOKEN] ?: "",
+            whisperBaseUrl = it[WHISPER_URL] ?: BuildConfig.LOCAL_WHISPER_BASE_URL,
+            whisperModel = it[WHISPER_MODEL] ?: BuildConfig.LOCAL_WHISPER_MODEL.ifBlank { "whisper-local" },
+            whisperApiKey = it[WHISPER_TOKEN] ?: ""
+        )
+    }
+
+    suspend fun saveAiSettings(value: AiSettings) {
+        context.dataStore.edit {
+            it[AI_PROVIDER] = value.provider
+            it[LOCAL_AI_URL] = value.baseUrl.trim()
+            it[LOCAL_AI_MODEL] = value.model.trim()
+            it[LOCAL_AI_TOKEN] = value.apiKey.trim()
+            it[WHISPER_URL] = value.whisperBaseUrl.trim()
+            it[WHISPER_MODEL] = value.whisperModel.trim()
+            it[WHISPER_TOKEN] = value.whisperApiKey.trim()
+        }
+    }
 
     // ★ 追加: GeminiのAPIキーが実際に有効か検証した結果("VALID"/"INVALID"/"UNVERIFIED"/未検証時は空文字)
     val geminiApiKeyStatus: Flow<String> =

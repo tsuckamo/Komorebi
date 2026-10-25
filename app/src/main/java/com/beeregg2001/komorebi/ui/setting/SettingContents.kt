@@ -1226,8 +1226,9 @@ fun LabSettingsContent(
             )
         }
 
-        SettingsSection("AIコンシェルジュ (Gemini)") {
+        SettingsSection("AIコンシェルジュ") {
             val statusText = when {
+                apiKeyStatus == "LOCAL" -> "ローカルLLM / Whisper"
                 apiKey.isBlank() -> "未設定"
                 isValidatingApiKey -> "確認中..."
                 apiKeyStatus == "VALID" -> "設定済み"
@@ -1236,7 +1237,7 @@ fun LabSettingsContent(
                 else -> "未確認"
             }
             SettingItem(
-                title = "APIキー連携 (スマホで簡単設定)",
+                title = "会話AI・音声認識の設定",
                 value = statusText,
                 icon = Icons.Default.AutoAwesome,
                 modifier = Modifier

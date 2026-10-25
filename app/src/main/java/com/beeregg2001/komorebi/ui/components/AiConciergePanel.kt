@@ -57,7 +57,8 @@ fun AiConciergePanel(
     isSpeechSupported: Boolean,
     isRecording: Boolean,
     ticketManager: AiFocusTicketManager,
-    apiKey: String,
+    isConfigured: Boolean,
+    isBusy: Boolean,
     onGoToSettings: () -> Unit,
     onClose: () -> Unit,
     onMicLongPressStart: () -> Unit,
@@ -74,8 +75,8 @@ fun AiConciergePanel(
     val coroutineScope = rememberCoroutineScope()
 
     // ★ 修正: APIキー未設定の場合はタイピング処理をブロックしないように条件を追加
-    var isGreetingTyping by remember(isOpen, apiKey) {
-        mutableStateOf(isOpen && chatHistory.isEmpty() && apiKey.isNotBlank())
+    var isGreetingTyping by remember(isOpen, isConfigured) {
+        mutableStateOf(isOpen && chatHistory.isEmpty() && isConfigured)
     }
 
     val defaultRequester = if (isSpeechSupported) micFocusRequester else keyboardFocusRequester
@@ -86,8 +87,8 @@ fun AiConciergePanel(
     //   フォーカス対象が無く、下のticketManager経由のPANEL_DEFAULTだけに頼ると
     //   チケットの取りこぼし時にフォーカスが背面のホーム画面へ抜けてしまう)
     // はチケットを待たずここで確保する。
-    LaunchedEffect(isOpen, apiKey) {
-        if (isOpen && (chatHistory.isNotEmpty() || apiKey.isBlank())) {
+    LaunchedEffect(isOpen, isConfigured) {
+        if (isOpen && (chatHistory.isNotEmpty() || !isConfigured)) {
             delay(150); defaultRequester.safeRequestFocusWithRetry("AiPanel_Open")
         }
     }
@@ -169,7 +170,7 @@ fun AiConciergePanel(
                     )
                 }
 
-                if (apiKey.isBlank()) {
+                if (!isConfigured) {
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -185,7 +186,7 @@ fun AiConciergePanel(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "AIコンシェルジュを利用するには\nAPIキーの設定が必要です。",
+                            "AIコンシェルジュを利用するには\n接続先の設定が必要です。",
                             color = colors.textPrimary,
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyLarge,
@@ -392,14 +393,14 @@ fun AiConciergePanel(
                         ) {
                             Surface(
                                 onClick = { /* クリック時は何もしない */ },
-                                enabled = isSpeechSupported && !isGreetingTyping,
+                                enabled = isSpeechSupported && !isGreetingTyping && !isBusy,
                                 modifier = Modifier
                                     .size(44.dp)
                                     .focusRequester(micFocusRequester)
                                     .onPreviewKeyEvent { event ->
                                         val isCenterKey =
                                             event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
-                                        if (isCenterKey) {
+                                        if (isCenterKey && !isBusy) {
                                             if (event.type == KeyEventType.KeyDown) {
                                                 if (event.nativeKeyEvent.isLongPress && !isMicLongPressHandled) {
                                                     isMicLongPressHandled = true
@@ -469,8 +470,8 @@ fun AiConciergePanel(
                             modifier = Modifier.weight(1f)
                         ) {
                             Surface(
-                                onClick = { if (!isGreetingTyping) onKeyboardClick() },
-                                enabled = !isGreetingTyping,
+                                onClick = { if (!isGreetingTyping && !isBusy) onKeyboardClick() },
+                                enabled = !isGreetingTyping && !isBusy,
                                 modifier = Modifier
                                     .size(44.dp)
                                     .focusRequester(keyboardFocusRequester)

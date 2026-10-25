@@ -19,111 +19,84 @@ import java.io.IOException
 class AudioRecorderHelper(private val context: Context) {
 
     private var audioRecord: AudioRecord? = null
-    private var isRecording = false
+    @Volatile private var isRecording = false
     private var recordingJob: Job? = null
-    private val coroutineScope = CoroutineScope(Dispatchers.IO + Job())
-
+    private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var outputFile: File? = null
-
     private val sampleRate = 16000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
 
-    fun startRecording() {
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            Log.e("AudioRecorderHelper", "マイク権限がありません！")
-            return
-        }
-
-        stopRecording()
-        outputFile = File(context.cacheDir, "ai_concierge_voice.wav")
-
-        try {
-            // ★修正: Fire OS などのTV端末で拾いやすい「VOICE_RECOGNITION」に変更
-            audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                sampleRate,
-                channelConfig,
-                audioFormat,
-                bufferSize
-            )
-
-            if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                Log.e("AudioRecorderHelper", "AudioRecordの初期化に失敗しました")
-                return
-            }
-
-            audioRecord?.startRecording()
+    fun startRecording(): Boolean {
+        if (isRecording || recordingJob?.isActive == true) return false
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return false
+        val file = File(context.cacheDir, "ai_concierge_voice.wav")
+        file.delete()
+        outputFile = file
+        return try {
+            val recorder = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                sampleRate, channelConfig, audioFormat, bufferSize)
+            audioRecord = recorder
+            check(recorder.state == AudioRecord.STATE_INITIALIZED)
+            recorder.startRecording()
             isRecording = true
-            Log.i("AudioRecorderHelper", "🎤 録音を開始しました")
-
-            recordingJob = coroutineScope.launch {
-                writeAudioDataToFile(outputFile!!)
-            }
-        } catch (e: SecurityException) {
-            Log.e("AudioRecorderHelper", "セキュリティ例外", e)
+            recordingJob = coroutineScope.launch { writeAudioDataToFile(recorder, file) }
+            true
         } catch (e: Exception) {
-            Log.e("AudioRecorderHelper", "録音の開始に失敗しました", e)
-        }
-    }
-
-    fun stopRecording(): File? {
-        if (!isRecording) return null
-
-        isRecording = false
-        try {
-            audioRecord?.apply {
-                stop()
-                release()
-            }
-        } catch (e: Exception) {
-            Log.e("AudioRecorderHelper", "録音の停止時にエラー", e)
-        } finally {
+            Log.w("AudioRecorderHelper", "録音を開始できませんでした", e)
+            audioRecord?.release()
             audioRecord = null
+            false
         }
-
-        recordingJob?.cancel()
-        recordingJob = null
-
-        Log.i("AudioRecorderHelper", "⏹️ 録音を終了し、WAVファイルを保存しました")
-        return outputFile
     }
 
-    private fun writeAudioDataToFile(file: File) {
+    suspend fun stopRecording(): File? = withContext(Dispatchers.IO + NonCancellable) {
+        if (!isRecording) return@withContext null
+        isRecording = false
+        val recorder = audioRecord
+        try {
+            runCatching { recorder?.stop() }
+            // PCM読み取りの終了とWAVヘッダーの書き込みが終わるまで待つ。
+            recordingJob?.join()
+            outputFile?.takeIf { it.exists() && it.length() > 44 }
+        } finally {
+            recorder?.release()
+            audioRecord = null
+            recordingJob = null
+        }
+    }
+
+    fun release() {
+        isRecording = false
+        runCatching { audioRecord?.stop() }
+        coroutineScope.launch {
+            recordingJob?.join()
+            audioRecord?.release()
+            audioRecord = null
+            outputFile?.delete()
+            coroutineScope.cancel()
+        }
+    }
+
+    private fun writeAudioDataToFile(recorder: AudioRecord, file: File) {
         val rawFile = File(context.cacheDir, "temp_raw_audio.pcm")
         val data = ByteArray(bufferSize)
-        var totalBytesRead = 0L // ★追加: 実際に読み取れたバイト数を追跡
-
+        var totalBytesRead = 0L
         try {
             FileOutputStream(rawFile).use { os ->
                 while (isRecording) {
-                    val read = audioRecord?.read(data, 0, bufferSize) ?: 0
-                    if (read > 0) {
-                        os.write(data, 0, read)
-                        totalBytesRead += read
-                    }
+                    val count = recorder.read(data, 0, data.size)
+                    if (count < 0) break
+                    if (count > 0) { os.write(data, 0, count); totalBytesRead += count }
                 }
             }
-
-            Log.i("AudioRecorderHelper", "🎤 読み取った生の音声データ量: $totalBytesRead bytes")
-
-            // ★修正: データが1バイト以上ある場合のみWAV化する
-            if (rawFile.exists() && totalBytesRead > 0) {
-                copyRawToWav(rawFile, file)
-            } else {
-                Log.w(
-                    "AudioRecorderHelper",
-                    "⚠️ マイクから音声データが全く取得できませんでした。リモコンのマイクがオフになっている可能性があります。"
-                )
-            }
+            if (totalBytesRead > 0) copyRawToWav(rawFile, file)
+        } catch (e: Exception) {
+            Log.w("AudioRecorderHelper", "録音データを保存できませんでした", e)
+            file.delete()
+        } finally {
             rawFile.delete()
-        } catch (e: IOException) {
-            Log.e("AudioRecorderHelper", "音声データの書き込みエラー", e)
         }
     }
 

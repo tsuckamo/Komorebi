@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,6 +9,13 @@ plugins {
     id("com.google.devtools.ksp")
     alias(libs.plugins.baselineprofile)
 }
+
+// 個人用接続先はGit管理外のlocal.propertiesから読み、公開ソースには含めない。
+val localAiDefaults = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+fun localAiString(key: String): String = "\"" + localAiDefaults.getProperty(key, "")
+    .replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 android {
     namespace = "com.beeregg2001.komorebi"
@@ -26,8 +35,12 @@ android {
         applicationId = "com.beeregg2001.Komorebi"
         minSdk = 24
         targetSdk = 34
-        versionCode = 20
-        versionName = "1.1.1-tsuckamo.1"
+        versionCode = 21
+        versionName = "1.1.1-tsuckamo.2"
+        buildConfigField("String", "LOCAL_AI_BASE_URL", localAiString("local.ai.baseUrl"))
+        buildConfigField("String", "LOCAL_AI_MODEL", localAiString("local.ai.model"))
+        buildConfigField("String", "LOCAL_WHISPER_BASE_URL", localAiString("local.whisper.baseUrl"))
+        buildConfigField("String", "LOCAL_WHISPER_MODEL", localAiString("local.whisper.model"))
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
