@@ -136,6 +136,10 @@ fun MainRootScreen(
     LaunchedEffect(Unit) {
         aiConciergeViewModel.pendingAction.collect { action ->
             when (action) {
+                is AiConciergeAction.RequestCancelAuto -> {
+                    closeAiConcierge(false)
+                    state.autoReserveCancelKeyword = action.keyword
+                }
                 is AiConciergeAction.PlayLive -> {
                     closeAiConcierge(false)
                     val target = channelViewModel.groupedChannels.value.values.flatten()

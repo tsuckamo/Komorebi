@@ -61,6 +61,13 @@ interface ReserveProvider {
     ): Result<ReservationCondition>
 
     suspend fun deleteReservationCondition(conditionId: Int): Result<Unit>
+
+    suspend fun findAutoReserveCancellationCandidates(keyword: String): Result<List<AutoReserveCancelCandidate>> =
+        Result.failure(UnsupportedOperationException("AIからの毎週録画取り消しはEPGStation接続時に利用できます。"))
+    suspend fun previewAutoReserveCancellation(ruleId: Int): Result<AutoReserveCancelPreview> =
+        Result.failure(UnsupportedOperationException("この接続先では毎週録画の取り消し確認に対応していません。"))
+    suspend fun confirmAutoReserveCancellation(token: String): Result<AutoReserveCancelResult> =
+        Result.failure(UnsupportedOperationException("接続先が変わりました。対象を選び直してください。"))
 }
 
 /**
