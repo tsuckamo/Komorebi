@@ -17,6 +17,8 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+internal const val WEEKLY_RERUN_EXCLUSION = "\\[再\\]|【再】|（再）|\\(再\\)|再放送|再放映"
+
 /** AI は検索語を渡すだけ。番組・条件・確認はアプリが保持する。 */
 @Singleton
 class EpgStationRuleCreation(private val api: EpgStationApi, private val now: () -> Long) {
@@ -177,7 +179,7 @@ class EpgStationRuleCreation(private val api: EpgStationApi, private val now: ()
         searchOption = EsRuleSearchOption(keyword = options.keyword, keyCS = false, keyRegExp = false,
             name = true, description = false, extended = false, channelIds = listOf(channelId),
             times = listOf(EsRuleTime(week = options.week)),
-            ignoreKeyword = if (options.excludeReruns) "\\[再\\]|【再】|（再）|\\(再\\)|再放送|再放映" else null,
+            ignoreKeyword = if (options.excludeReruns) WEEKLY_RERUN_EXCLUSION else null,
             ignoreKeyCS = if (options.excludeReruns) false else null,
             ignoreKeyRegExp = if (options.excludeReruns) true else null,
             ignoreName = options.excludeReruns, ignoreDescription = false, ignoreExtended = false),
