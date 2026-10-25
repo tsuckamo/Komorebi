@@ -129,6 +129,14 @@ fun MainRootDialogs(
     // ダイアログ & オーバーレイ UI
     // ========================================================================
 
+    state.autoReserveCancelKeyword?.let { keyword ->
+        com.beeregg2001.komorebi.ui.reserve.AutoReserveCancellationDialog(
+            keyword = keyword,
+            onDismiss = { state.autoReserveCancelKeyword = null; closeAiConcierge(true) },
+            onChanged = { reserveViewModel.refreshAll(showLoading = false) }
+        )
+    }
+
     if (hasSyncError) {
         val errorMessage = recordViewModel.syncProgress.value.error ?: "不明なエラー"
         SyncErrorDialog(

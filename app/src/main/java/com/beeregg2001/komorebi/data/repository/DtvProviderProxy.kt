@@ -204,6 +204,13 @@ class DtvProviderProxy @Inject constructor(
     override suspend fun deleteReservationCondition(conditionId: Int) =
         getReserveProvider().deleteReservationCondition(conditionId)
 
+    override suspend fun findAutoReserveCancellationCandidates(keyword: String) =
+        getReserveProvider().findAutoReserveCancellationCandidates(keyword)
+    override suspend fun previewAutoReserveCancellation(ruleId: Int) =
+        getReserveProvider().previewAutoReserveCancellation(ruleId)
+    override suspend fun confirmAutoReserveCancellation(token: String) =
+        getReserveProvider().confirmAutoReserveCancellation(token)
+
     // ========================================================================
     // EpgProvider (番組表関連)
     // ========================================================================

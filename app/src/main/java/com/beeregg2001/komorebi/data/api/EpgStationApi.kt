@@ -142,6 +142,16 @@ interface EpgStationApi {
     @GET("api/rules/{id}")
     suspend fun getRule(@Path("id") id: Int): EsRule
 
+    @GET("api/rules/{id}")
+    suspend fun getRawRule(@Path("id") id: Int): Response<com.google.gson.JsonObject>
+
+    @GET("api/recording")
+    suspend fun getRecordings(
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 200,
+        @Query("isHalfWidth") isHalfWidth: Boolean = false
+    ): EsRecords
+
     @POST("api/rules")
     suspend fun addRule(@Body body: EsAddRuleOption): Response<Unit>
 
