@@ -87,8 +87,8 @@ fun GeneralSettingsContent(
 
         SettingsSection("システム設定") {
             SettingItem(
-                title = "ベータ版のアップデートを受け取る",
-                value = if (receiveBetaUpdates) "ON" else "OFF",
+                title = "更新チャンネル",
+                value = "個人版（安定版・カスタム機能を維持）",
                 icon = Icons.Default.SystemUpdate,
                 modifier = Modifier
                     .focusRequester(betaUpdateR)
@@ -97,7 +97,7 @@ fun GeneralSettingsContent(
                         up = FocusRequester.Cancel
                         down = checkUpdateR
                     },
-                onClick = { onClick(betaUpdateR); onToggleBetaUpdates(!receiveBetaUpdates) }
+                onClick = { onClick(betaUpdateR) }
             )
             SettingItem(
                 title = "アップデートを確認する",
