@@ -44,9 +44,8 @@ class LocalAiClient @Inject constructor() {
                 mapOf("role" to "user", "content" to userPrompt)
             ),
             "stream" to false,
-            "max_tokens" to 1024,
-            "temperature" to 0.3,
-            "chat_template_kwargs" to mapOf("enable_thinking" to false)
+            // サンプリング・生成上限はサーバー設定に従い、思考強度だけ明示する。
+            "reasoning_effort" to "medium"
         ))
         val result = request(Request.Builder()
             .url(endpoint(settings.baseUrl, "chat/completions"))

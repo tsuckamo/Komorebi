@@ -49,7 +49,11 @@ class LocalAiClientTest {
         assertEquals("test-qwen", json["model"].asString)
         assertFalse(json["stream"].asBoolean)
         assertEquals("system", json["messages"].asJsonArray[0].asJsonObject["role"].asString)
-        assertFalse(json["chat_template_kwargs"].asJsonObject["enable_thinking"].asBoolean)
+        assertEquals("medium", json["reasoning_effort"].asString)
+        // サーバー側のサンプリング設定や思考トークン上限を上書きしない。
+        listOf("temperature", "top_p", "top_k", "min_p", "presence_penalty",
+            "frequency_penalty", "repeat_penalty", "max_tokens", "max_completion_tokens",
+            "chat_template_kwargs").forEach { assertFalse("$it must be omitted", json.has(it)) }
     }
 
     @Test fun emptyTranscriptionStaysEmpty() = runBlocking {

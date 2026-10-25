@@ -35,8 +35,8 @@ android {
         applicationId = "com.beeregg2001.Komorebi"
         minSdk = 24
         targetSdk = 34
-        versionCode = 21
-        versionName = "1.1.1-tsuckamo.2"
+        versionCode = 22
+        versionName = "1.1.1-tsuckamo.3"
         buildConfigField("String", "LOCAL_AI_BASE_URL", localAiString("local.ai.baseUrl"))
         buildConfigField("String", "LOCAL_AI_MODEL", localAiString("local.ai.model"))
         buildConfigField("String", "LOCAL_WHISPER_BASE_URL", localAiString("local.whisper.baseUrl"))
