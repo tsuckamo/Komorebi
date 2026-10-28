@@ -1,65 +1,47 @@
-# Komorebi
+# Komorebi — 非公式の個人フォーク
 
-**Komorebi** は、KonomiTV、EDCB、EPGStation バックエンド、Mirakurun（オプション）に対応した、Android TV 向けの高機能視聴クライアントアプリです。
-モダンな UI と直感的なリモコン操作、市販のハイエンドレコーダーを凌駕する高度なストリーミング制御を組み合わせ、これまでにない快適なテレビ視聴体験を提供します。
+[BeerEgg2001/Komorebi](https://github.com/BeerEgg2001/Komorebi) を基にした、個人利用向けの改造版です。**本家の公式リリースではありません。** 本家作者がこのフォークの独自変更を承認・保守していることを示すものではありません。
 
----
+> **この改造版に関する不具合・要望を、本家のIssueや作者のSNSに送らないでください。** 本フォークでは一般向けのサポート窓口を設けていません。
 
-## 📥 インストール方法
+Komorebi本体と既存機能の開発者は **BeerEgg2001氏および本家のコントリビューター**です。本フォークでは原作者の著作権表示と [MITライセンス](LICENSE) を維持しています。本家の機能・変更点については [本家README](https://github.com/BeerEgg2001/Komorebi/blob/main/README.md) を参照してください。
 
-Komorebiは Google Play ストア等のアプリストアでは配布していません。GitHubの [Releases](https://github.com/BeerEgg2001/Komorebi/releases) ページからAPKファイルを直接ダウンロードし、手動でインストールする形になります。
-初回インストール後は、アプリ起動時の自動チェックに加え、設定画面（一般設定 → システム設定 → 「アップデートを確認する」）からも手動でバージョンアップを確認・適用できるため、毎回この手順を踏む必要はありません。
+## このフォークの主な独自変更
 
-### 1. 「提供元不明のアプリ」のインストールを許可する
+- EPGStationの録画削除と、削除結果の確認。
+- OpenAI互換APIのローカルLLMとWhisperによるAIコンシェルジュ。LLMへの `reasoning_effort` は `medium`。
+- 番組名の表記揺れを考慮したAI番組表検索。
+- AI入力からの毎週録画ルールの作成・キャンセル。対象番組や条件を画面で確認してから実行し、結果を照合。
+- 本家の安定版を取り込み、独自変更を維持してビルド・配布する個人フォーク用の更新処理。
 
-初期状態では、ストア以外からのアプリインストールはブロックされています。事前に端末側で許可設定を行ってください。
+各版の取り込み元とバージョンは [custom-release.properties](custom-release.properties)、配布中APKの情報は [custom-update.json](custom-update.json) に記載しています。独自変更の確認範囲は限られており、本家が対応する全機種・全バックエンドで検証したものではありません。
 
-* **Fire TV**: 設定 → マイFire TV（Deviceの場合もあり）→ 開発者オプション → 「提供元不明のアプリ」から、インストールに使うアプリ（後述のDownloaderなど）を「オン」にする
-* **Android TV / Google TV**: 設定 → アプリ → 特別なアプリアクセス → 不明なアプリのインストール → インストールに使うアプリを選択し「許可」する
+## このフォークのインストールと更新
 
-### 2. APKをダウンロードしてインストールする
+この改造版のAPKは **[このフォークのReleases](https://github.com/tsuckamo/Komorebi/releases)** から入手してください。現在の配布対象は `armeabi-v7a` 版です。初回は端末で提供元不明アプリのインストールを許可し、APKを手動またはADBでインストールします。
 
-#### 方法A: Downloaderを使う（推奨・リモコン操作だけで完結）
+```sh
+adb connect <TV端末のIPアドレス>
+adb install -r <このフォークのAPKのパス>
+```
 
-PCを使わず、テレビ本体だけでインストールできる方法です。
+本家のAPKとこのフォークのAPKは、署名と更新経路が異なります。既存の本家版へそのまま上書きできるとは限りません。改造版を使い続ける場合、本家のダウンロードURLを更新先に使用しないでください。
 
-1. Fire TV/Android TVのアプリストアで「**Downloader**」（AFTVnews製）を検索してインストールする
-2. Downloaderを起動し、URL入力欄に以下を入力する
+本フォークのアプリ内更新は、このフォークの `custom-update.json` を参照します。本家の更新を取り込む処理と公開前の検証はPC側で実行し、テレビ側では更新内容を確認してインストールします。構成・復旧手順は [個人フォークの更新](tools/custom_update/README.md) を参照してください。取り込み時に競合や検査失敗が起きた場合は自動公開を停止します。
 
-   ```
-   https://github.com/BeerEgg2001/Komorebi/releases/latest/download/Komorebi-universal-release.apk
-   ```
+接続先やAPI認証情報は利用環境ごとに設定してください。個人用の接続先、署名秘密鍵、詳細ログやテレビ画面を公開リポジトリへ追加しない運用です。公開用ビルドでは `-PpublicRelease` を指定し、個人用AI初期値を含めません。
 
-   このURLは常に最新のStable版（Universal版）を指すため、毎回リリースページでバージョンを確認する必要はありません。
-   端末のCPUアーキテクチャに絞った軽量版（`armeabi-v7a` / `arm64-v8a`）を使いたい場合は、[Releasesページ](https://github.com/BeerEgg2001/Komorebi/releases)から該当のAPKを直接ダウンロードしてください。
-3. ダウンロード完了後、画面の指示に従ってインストールする
+## 本家由来の共通機能・使い方
 
-#### 方法B: PCからadbでインストールする
+以下は本家READMEを基にした共通機能の説明です。掲載画像・対応環境の報告は本家由来であり、このフォークでの全項目の動作確認を意味しません。配布・更新・問い合わせについては、上記のフォーク専用の案内を優先してください。
 
-PC操作に抵抗がない方向けの方法です。
-
-1. TV端末側で「ネットワークADBデバッグ」を有効にする
-2. [Releasesページ](https://github.com/BeerEgg2001/Komorebi/releases)からお使いの端末に合ったAPKをPCへダウンロードする
-3. PCで `adb connect <TV端末のIPアドレス>` を実行して接続し、続けて `adb install <ダウンロードしたAPKのパス>` を実行する
-
-> **配布ファイルについて**: 各リリースには、あらゆる端末で動作する **Universal版**（サイズ大）に加え、`armeabi-v7a` / `arm64-v8a` 向けの軽量版を用意しています。ファイルライブラリ（SMB）機能で使用している `libVLC` のサイズが大きく、低スペック機ではUniversal版のインストールに失敗する場合があるための措置です。動作に不安がある場合は、端末のCPUアーキテクチャに合った軽量版のご利用をおすすめします。
-
-> **軽量版の選び方**: 軽量版はCPUアーキテクチャが一致しないとインストールできません（`INSTALL_FAILED_NO_MATCHING_ABIS`）。
->
-> * **Fire TV シリーズ（Fire TV Stick / Stick 4K / Stick 4K Max / Fire TV Cube など）は、世代やFire OSのバージョンを問わず `armeabi-v7a` を選んでください。** [Amazonの公式仕様](https://developer.amazon.com/docs/device-specs/device-specifications-fire-tv-streaming-media-player.html)では、Fire OS 6 / 7 / 8 のいずれの機種も Application ABI が 32bit と明記されています。SoC自体は64bit対応でも**OS側が32bitに制限されているため、`arm64-v8a` 版はインストールできません**。
-> * **Android TV / Google TV 搭載テレビなどは機種によって異なります。** 以下のコマンドで端末のABIを確認できます（開発者オプションでadbデバッグを有効にした状態で実行）。
-    >
-    >   ```sh
->   adb shell getprop ro.product.cpu.abi
->   ```
->
-> 確認が難しい場合や判断に迷う場合は、両方のアーキテクチャを含む **Universal版**をご利用ください。
+**Komorebi** は、KonomiTV、EDCB、EPGStation バックエンド、Mirakurun（オプション）に対応した、Android TV 向けの視聴クライアントアプリです。
 
 ---
 
 ## ⚠️ 【重要】初回セットアップとバックエンド環境について
 * **初回セットアップ**: インストール後の初回起動時は、**KonomiTV**・**EDCB**・**EPGStation** のいずれか、および **Mirakurun（オプション）** のサーバー設定が必要です。画面の指示に従ってIPアドレスやポート番号を入力してください。バックエンドにMirakurunを使用していない場合は、MirakurunのIPアドレスとポート番号の入力は不要です。
-* **EDCBをご利用の方へ**: ライブ視聴・録画視聴のいずれについても、連携スクリプトの配置が必要です。各リリースに添付されている `Komorebi Configurator`（Windows用）または `setup.sh`（Linux用）を実行し、最新の `resolver.lua` を設定してください。さらに、録画番組への「直接アクセス」再生でシーンサーチのサムネイル画像を表示する場合は、同梱の `Komorebi Thumbnailer` によるサムネイル生成も必要です。
+* **EDCBをご利用の方へ**: ライブ視聴・録画視聴のいずれについても、連携スクリプトの配置が必要です。`Komorebi Configurator`（Windows用）、`setup.sh`（Linux用）、`resolver.lua`、シーンサーチ用の `Komorebi Thumbnailer` は [本家READMEの案内](https://github.com/BeerEgg2001/Komorebi/blob/main/README.md) を参照してください。本フォークのリリースには現在APKのみを掲載しています。
 * **EPGStationをご利用の方へ**: [stuayu氏によるFork版EPGStation](https://github.com/stuayu/EPGStation) での動作を確認しています。本家EPGStationでの動作は未確認です。
   * Komorebiは EPGStation のログイン認証に対応していません。EPGStation の `config.yml` で `auth.enabled: true` にしていると、HLS再生が約15秒で停止し、予約・自動予約条件の追加/変更/削除も失敗します。Komorebiから利用する場合は `auth.enabled` を設定しない（既定で無効）か、`false` にしてください。
 * **Cloudflare Zero Trust（Cloudflare Access）配下の環境をご利用の方へ**: 接続設定画面からサービストークン（Client ID / Client Secret）を入力することで、各バックエンドへ接続できます。
@@ -68,8 +50,8 @@ PC操作に抵抗がない方向けの方法です。
 
 ## 💻 動作環境
 
-以下の環境で動作確認しております。Android 7.1.2、Fire OS 6以上のOSが必要です。（おおよそ2021年以降の機種であれば利用できると思います）
-機種ごとの確認報告などは作者X([@tamago0602](https://x.com/tamago0602))へご連絡いただければ、とても嬉しいです。
+本家では以下の環境での動作確認が報告されています。Android 7.1.2、Fire OS 6以上のOSが必要です。（おおよそ2021年以降の機種であれば利用できると思います）
+以下の一覧は本家の動作確認報告を引き継いだものです。本フォーク独自の変更まで、これらの全環境で検証したものではありません。
 
 * REGZA 55X8900K (Android TV 10)
 * Fire TV Stick 4K Max 第一世代 (Fire OS 7 Android 9ベース)
@@ -89,7 +71,7 @@ PC操作に抵抗がない方向けの方法です。
 <img width="960" height="540" alt="Image" src="https://github.com/user-attachments/assets/73a372f0-40dc-45a1-bead-eed42006ac8c" />
 
 * **ダイナミック・ヒーローダッシュボード**: リモコンのフォーカス移動に合わせて、バックグラウンドで高速にAPIと通信し、高画質な背景画像や番組のあらすじ、視聴プログレスバーがシームレスなアニメーションとともに切り替わります。
-* **AIコンシェルジュ機能 (Gemini連携)**: リッチテキスト（マークダウン）の太字や箇条書きに対応したAIが番組探しをサポートします。無機質にならないよう「装飾を保ったままのタイピングアニメーション」を独自実装し、視認性と演出を両立しています。
+* **AIコンシェルジュ機能 (本家はGemini連携、本フォークではローカルAIも追加)**: リッチテキスト（マークダウン）の太字や箇条書きに対応したAIが番組探しをサポートします。無機質にならないよう「装飾を保ったままのタイピングアニメーション」を独自実装し、視認性と演出を両立しています。
 * **時間連動テーマ**: 朝・昼・夕方・夜の時間帯に合わせて、自動的にUIのカラーパレットや背景のグラデーションが美しく変化する「木漏れ日」「カイル」テーマを搭載。時間帯ごとのエモーショナルな配色で視聴体験を彩ります。
 
   ※ 設定画面→ホーム画面設定からライトテーマ、ダークテーマ、時間連動テーマの切り替えが可能です
@@ -274,7 +256,9 @@ bash "${MODULE_PATH}/jni/build_ffmpeg.sh" \
 ---
 
 ## 🤝 SpecialThanks!
-本アプリの開発にあたり、以下の素晴らしいプロジェクトと成果物を活用させていただいております。
+本フォークの基盤となる [Komorebi本家](https://github.com/BeerEgg2001/Komorebi) の開発者、BeerEgg2001氏とコントリビューターの皆さまに感謝します。
+
+以下の謝辞は本家から引き継いでいます。
 
 * **[tsreadex](https://github.com/xtne6f/tsreadex)**: TS ストリーム解析および読み込み処理の基盤。
 * **[libaribcaption](https://github.com/xqq/libaribcaption)**: ARIB 字幕のデコード・描画ライブラリ。
@@ -286,5 +270,5 @@ bash "${MODULE_PATH}/jni/build_ffmpeg.sh" \
 
 
 ---
-**Komorebi** の最新の進化をぜひお楽しみください！
-さらなる改善案やバグ報告、特定のデバイスでの動作報告も、GitHub Issue や X にてお待ちしております。
+原作者の著作権表示と利用条件は [LICENSE](LICENSE) を参照してください。
+この改造版についての問い合わせを、本家のIssueや作者のSNSへ送らないでください。
