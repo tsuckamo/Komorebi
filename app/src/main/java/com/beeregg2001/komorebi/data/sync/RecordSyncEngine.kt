@@ -253,6 +253,8 @@ class RecordSyncEngine @Inject constructor(
                     var currentPage =
                         if (canResumeInitialBuild) currentMeta.lastSyncedPage + 1 else 1
                     val isResumed = canResumeInitialBuild
+                    val isEpgStation = settingsRepository.backendType.first() == "EPGSTATION"
+                    val recordingSnapshot = if (isEpgStation && !isResumed) RecordingSnapshot() else null
                     var isCompleted = false
                     var processedCount = if (isResumed) programDao.getAllIds().size else 0
 
@@ -260,7 +262,7 @@ class RecordSyncEngine @Inject constructor(
                     // ただし孤児削除を恒久的に諦めるとサーバー側で消した録画がローカルに残り続けるため、
                     // 明示的な完全同期 (forceFullSync) のときだけは省メモリ機でも実行する。
                     val needsOrphanDeletion =
-                        !isResumed &&
+                        !isEpgStation && !isResumed &&
                             (isInitial || forceFullSync) &&
                             (syncProfile.name != "low" || forceFullSync)
                     val allFetchedIds = if (needsOrphanDeletion) mutableSetOf<Int>() else null
@@ -300,14 +302,10 @@ class RecordSyncEngine @Inject constructor(
                             }.awaitAll().sortedBy { it.first }
                         }
 
-                        if (fetchedPages.all { it.second.recordedPrograms.isEmpty() }) {
-                            isCompleted = true
-                            break
-                        }
-
                         for ((page, response) in fetchedPages) {
                             currentCoroutineContext().ensureActive()
                             val programs = response.recordedPrograms
+                            recordingSnapshot?.addPage(response.total, programs.map { it.id })
                             if (programs.isEmpty()) {
                                 isCompleted = true
                                 break
@@ -316,7 +314,7 @@ class RecordSyncEngine @Inject constructor(
                             val entities = programs.map { RecordDataMapper.toEntity(it) }
                             allFetchedIds?.addAll(entities.map { it.id })
 
-                            if (currentMeta.isInitialBuildCompleted && !forceFullSync) {
+                            if (currentMeta.isInitialBuildCompleted && !forceFullSync && !isEpgStation) {
                                 val pageIds = entities.map { it.id }
                                 val localEntitiesMap =
                                     programDao.getByIds(pageIds).associateBy { it.id }
@@ -415,7 +413,9 @@ class RecordSyncEngine @Inject constructor(
                     }
 
                     if (isCompleted) {
-                        if (needsOrphanDeletion && allFetchedIds != null && allFetchedIds.isNotEmpty()) {
+                        if (isEpgStation) {
+                            recordingSnapshot?.completeIds()?.let { pruneMissingRecordings(it) }
+                        } else if (needsOrphanDeletion && allFetchedIds != null && allFetchedIds.isNotEmpty()) {
                             val localIds = programDao.getAllIds()
                             val idsToDelete = localIds.toSet() - allFetchedIds
                             if (idsToDelete.isNotEmpty()) {
@@ -549,6 +549,10 @@ class RecordSyncEngine @Inject constructor(
 
                         val response = recordProvider.getRecordedPrograms(page = 1)
                         val apiPrograms = response.recordedPrograms
+                        if (settingsRepository.backendType.first() == "EPGSTATION") {
+                            val snapshot = RecordingSnapshot().apply { addPage(response.total, apiPrograms.map { it.id }) }
+                            snapshot.completeIds()?.let { pruneMissingRecordings(it) }
+                        }
                         if (apiPrograms.isEmpty()) return@withContext
 
                         val entities = apiPrograms.map { RecordDataMapper.toEntity(it) }
@@ -609,6 +613,19 @@ class RecordSyncEngine @Inject constructor(
 
         } finally {
             smartSyncMutex.unlock()
+        }
+    }
+
+    /** Caller holds syncMutex; this only removes cached rows, never files on the server. */
+    private suspend fun pruneMissingRecordings(serverIds: Set<Int>) {
+        db.withTransaction {
+            val dao = db.recordedProgramDao()
+            val missing = dao.getAllIds().filterNot { it in serverIds }
+            missing.chunked(900).forEach {
+                dao.deleteByIds(it)
+                db.watchHistoryDao().deleteByIds(it)
+            }
+            if (missing.isNotEmpty()) Log.i(TAG, "Removed ${missing.size} stale cached recordings from a complete server listing.")
         }
     }
 

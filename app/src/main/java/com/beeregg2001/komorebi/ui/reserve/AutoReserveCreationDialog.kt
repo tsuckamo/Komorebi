@@ -71,7 +71,7 @@ fun AutoReserveCreationDialog(keyword: String, onDismiss: () -> Unit, onChanged:
                             Button(onClick = { viewModel.edit(current.options.copy(week = 127)) }) { Text("全曜日") }
                             Button(onClick = { viewModel.edit(current.options.copy(excludeReruns = !current.options.excludeReruns)) }) { Text(if (current.options.excludeReruns) "再放送表示: 除外" else "再放送表示: 含める") }
                         }
-                        Text("選択中: ${weekLabel(current.options.week)} / 時刻指定なし / 番組名を検索\n保存先・画質はEPGStationの標準設定です。", color = colors.textPrimary)
+                        Text("選択中: ${weekLabel(current.options.week)} / 時刻指定なし / 番組名を検索\n次の確認画面でEPGStationの既定録画プリセットを取得します。", color = colors.textPrimary)
                         Text("同じ曜日なら放送時刻の変更にも追従します。深夜0時を越えて別曜日になる変更には「全曜日」を選んでください。再放送の表示がない番組は除外できません。", color = colors.textSecondary)
                         current.error?.let { Text(it, color = colors.textPrimary) }
                     }
@@ -79,6 +79,7 @@ fun AutoReserveCreationDialog(keyword: String, onDismiss: () -> Unit, onChanged:
                         val preview = current.preview
                         Text("検索語「${preview.options.keyword}」 / ${preview.candidate.channel}\n${weekLabel(preview.options.week)}・時刻指定なし / 再放送表示${if (preview.options.excludeReruns) "を除外" else "も含める"}", color = colors.textPrimary)
                         Text("現在の番組表で対象${preview.programs.size}件。各行は上下キーで確認できます。", color = colors.textPrimary)
+                        Text(preview.recordingSettingsDescription, color = colors.textPrimary)
                         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 160.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(preview.programs, key = { it.programId }) { item ->
                                 Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("${dateLabel(item.startAt)} ${item.title}") }

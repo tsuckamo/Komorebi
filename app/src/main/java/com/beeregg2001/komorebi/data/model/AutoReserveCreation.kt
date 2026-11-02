@@ -7,7 +7,8 @@ data class AutoReserveCreateCandidate(
 data class AutoReserveCreateOptions(val keyword: String, val week: Int, val excludeReruns: Boolean = true)
 data class AutoReserveCreatePreview(
     val token: String, val candidate: AutoReserveCreateCandidate,
-    val options: AutoReserveCreateOptions, val programs: List<AutoReserveCreateCandidate>
+    val options: AutoReserveCreateOptions, val programs: List<AutoReserveCreateCandidate>,
+    val recordingSettingsDescription: String = ""
 )
 data class AutoReserveCreateResult(val ruleId: Int, val message: String)
 data class EsScheduleSearchOption(val option: EsRuleSearchOption, val isHalfWidth: Boolean = false, val limit: Int = 500)

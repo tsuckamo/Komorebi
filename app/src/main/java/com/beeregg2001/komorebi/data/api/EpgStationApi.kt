@@ -123,6 +123,9 @@ interface EpgStationApi {
     @GET("api/config")
     suspend fun getConfig(): EsConfig
 
+    @GET("api/recording-presets/default")
+    suspend fun getDefaultRecordingPreset(): Response<EsRecordingPreset>
+
     @GET("api/reserves")
     suspend fun getReserves(
         @Query("offset") offset: Int = 0,

@@ -224,6 +224,7 @@ class EpgStationRecordRepository @Inject constructor(
                 offset = (page - 1) * safeLimit,
                 limit = safeLimit
             )
+            check(response.total >= response.records.size) { "録画一覧の総件数を確認できません。" }
             RecordedApiResponse(
                 total = response.total,
                 recordedPrograms = response.records.map { mapRecorded(it, false) }

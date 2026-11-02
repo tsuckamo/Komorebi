@@ -27,9 +27,10 @@ class EpgStationRuleCreation(private val api: EpgStationApi, private val now: ()
     private data class Draft(
         val preview: AutoReserveCreatePreview, val body: EsAddRuleOption,
         val program: EsScheduleProgramItem, val matches: List<EsScheduleProgramItem>,
-        val origin: String, val createdAt: Long
+        val origin: String, val createdAt: Long, val preset: EsRecordingPreset?
     )
     private val mutex = Mutex()
+    private val recordingPresets = EpgStationRecordingPresets(api)
     private var choices = emptyMap<Long, Choice>()
     private var draft: Draft? = null
 
@@ -78,14 +79,16 @@ class EpgStationRuleCreation(private val api: EpgStationApi, private val now: ()
             }
             check(program.startAt > now() + 600_000) { "開始10分以内の番組です。別の放送回を選んでください。" }
             val clean = options.copy(keyword = options.keyword.trim())
-            val body = ruleBody(choice.channelId, clean)
+            val preset = recordingPresets.loadDefault()
+            val body = recordingPresets.rule(ruleBody(choice.channelId, clean), preset)
             val origin = origin(response)
             val matches = matchingPrograms(body, origin)
             check(matches.any { it.id == programId }) { "この条件では選んだ番組が対象になりません。検索語・曜日・再放送条件を見直してください。" }
             ensureNoDuplicate(body)
             val preview = AutoReserveCreatePreview(UUID.randomUUID().toString(), choice.item, clean,
-                matches.map { AutoReserveCreateCandidate(it.id, it.name, choice.item.channel, it.startAt, clean.keyword, dayMask(it.startAt)) })
-            draft = Draft(preview, body, program, matches, origin, now())
+                matches.map { AutoReserveCreateCandidate(it.id, it.name, choice.item.channel, it.startAt, clean.keyword, dayMask(it.startAt)) },
+                recordingPresets.description(preset))
+            draft = Draft(preview, body, program, matches, origin, now(), preset)
             preview
         }
     }
@@ -99,6 +102,7 @@ class EpgStationRuleCreation(private val api: EpgStationApi, private val now: ()
             val latest = api.getScheduleForRule(current.program.id)
             check(origin(latest) == current.origin) { "接続先が変わりました。候補を選び直してください。" }
             check(latest.required() == current.program && current.program.startAt > now() + 600_000) { "番組表または開始時刻が変わりました。確認し直してください。" }
+            check(recordingPresets.loadDefault() == current.preset) { "既定録画プリセットが変わりました。保存先・エンコード設定を確認し直してください。" }
             check(matchingPrograms(current.body, current.origin) == current.matches) { "対象番組が変わりました。最新の条件を確認し直してください。" }
             ensureNoDuplicate(current.body)
             validTime()
@@ -110,6 +114,11 @@ class EpgStationRuleCreation(private val api: EpgStationApi, private val now: ()
                 val saved = api.getRawRule(id)
                 check(origin(saved) == current.origin) { "接続先が変わりました。" }
                 val rule = com.google.gson.Gson().fromJson(saved.required(), EsRule::class.java)
+                if (current.preset != null) {
+                    check(rule.saveOption == current.body.saveOption && rule.encodeOption == current.body.encodeOption) {
+                        "保存された保存先・エンコード設定が一致しません。"
+                    }
+                }
                 check(rule.id == id && !rule.isTimeSpecification && rule.reserveOption.enable &&
                     rule.searchOption.keyword == current.body.searchOption.keyword &&
                     rule.searchOption.channelIds == current.body.searchOption.channelIds &&

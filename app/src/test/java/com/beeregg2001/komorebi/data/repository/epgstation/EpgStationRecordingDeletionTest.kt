@@ -91,6 +91,31 @@ class EpgStationRecordingDeletionTest {
     }
 
     @Test
+    fun alreadyRemovedRecordingClearsCacheWithoutSendingDelete() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setHeader("Content-Type", "application/json")
+            .setBody("""{"code":404,"message":"recorded is not Found"}"""))
+        assertTrue(deletion.delete(73).isSuccess)
+        assertEquals(1, server.requestCount)
+        assertEquals("GET", server.takeRequest().method)
+    }
+
+    @Test
+    fun unrelatedJsonNotFoundIsNotProofOfDeletion() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("""{"code":404,"message":"route not found"}"""))
+        assertTrue(deletion.delete(73).isFailure)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun replacementEncodedTsStillUsesRecordingId() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"id":73,"name":"encoded","videoFiles":[{"id":999,"type":"encoded","filename":"replaced.hevc.ts","videoCodec":"hevc"}]}"""))
+        server.enqueue(MockResponse().setResponseCode(204))
+        assertTrue(deletion.delete(73).isSuccess)
+        server.takeRequest()
+        assertEquals("/api/recorded/73", server.takeRequest().path)
+    }
+
+    @Test
     fun deleteFailureIsNotReportedAsSuccess() = runBlocking {
         server.enqueue(recording())
         server.enqueue(MockResponse().setResponseCode(500))

@@ -46,7 +46,7 @@ data class EsScheduleProgramItem(
 )
 
 /** 録画一覧を表す DTO。 */
-data class EsRecords(val records: List<EsRecordedItem> = emptyList(), val total: Int = 0)
+data class EsRecords(val records: List<EsRecordedItem> = emptyList(), val total: Int = -1)
 
 /** 録画番組の情報を表す DTO。 */
 data class EsRecordedItem(
@@ -277,7 +277,46 @@ data class EsReserveItem(
 
 data class EsManualReserveOption(
     val programId: Long? = null,
-    val allowEndLack: Boolean = true
+    val allowEndLack: Boolean = true,
+    val saveOption: EsRuleSaveOption? = null,
+    val encodeOption: EsRuleEncodeOption? = null,
+    val priority: Int? = null,
+    val conflictPolicy: String? = null,
+    val startMarginSec: Int? = null,
+    val endMarginSec: Int? = null,
+    val tags: List<Int>? = null,
+    val finishCommandName: String? = null
+)
+
+/** Server-owned recording defaults, shared with the EPGStation Web UI. */
+data class EsRecordingPreset(
+    val id: Int = 0,
+    val name: String = "",
+    val isDefault: Boolean = false,
+    val settings: EsRecordingPresetSettings? = null
+)
+
+data class EsRecordingPresetSettings(
+    val parentDirectoryName: String? = null,
+    val directory: String? = null,
+    val recordedFormat: String? = null,
+    val mode1: String? = null,
+    val encodeParentDirectoryName1: String? = null,
+    val directory1: String? = null,
+    val mode2: String? = null,
+    val encodeParentDirectoryName2: String? = null,
+    val directory2: String? = null,
+    val mode3: String? = null,
+    val encodeParentDirectoryName3: String? = null,
+    val directory3: String? = null,
+    val isDeleteOriginalAfterEncode: Boolean = false,
+    val priority: Int? = null,
+    val conflictPolicy: String? = null,
+    val allowEndLack: Boolean = true,
+    val startMarginSec: Int? = null,
+    val endMarginSec: Int? = null,
+    val tags: List<Int>? = null,
+    val finishCommandName: String? = null
 )
 data class EsEditManualReserveOption(
     val allowEndLack: Boolean = true,
@@ -403,7 +442,12 @@ data class EsRuleReserveOption(
     val avoidDuplicate: Boolean = false,
     val periodToAvoidDuplicate: Int? = null,
     // ★ 追加: 録画後の自動タグ付与。以前はモデルに無く、更新のたびに失われていた。
-    val tags: List<Int>? = null
+    val tags: List<Int>? = null,
+    val priority: Int? = null,
+    val conflictPolicy: String? = null,
+    val startMarginSec: Int? = null,
+    val endMarginSec: Int? = null,
+    val finishCommandName: String? = null
 )
 data class EsRule(
     val id: Int = 0,

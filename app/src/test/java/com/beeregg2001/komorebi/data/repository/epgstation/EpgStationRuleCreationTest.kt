@@ -32,6 +32,8 @@ class EpgStationRuleCreationTest {
     private var savedWrong = false
     private var redirected = false
     private var detailStatus = 200
+    private var presetMode: String? = null
+    private var savedWrongEncoder = false
     private fun program(id: Long = 900) = """{"id":$id,"channelId":101,"startAt":$start,"endAt":${start+1_800_000},"name":"$title"}"""
     private fun json(value: String) = MockResponse().setHeader("Content-Type", "application/json").setBody(value)
     @Before fun setUp() {
@@ -53,6 +55,8 @@ class EpgStationRuleCreationTest {
                 }
                 if (request.method != "GET") { otherWrites++; return MockResponse().setResponseCode(400) }
                 return when (path) {
+                    "/api/recording-presets/default" -> presetMode?.let { json("""{"id":1,"name":"圧縮プリセット","isDefault":true,"settings":{"parentDirectoryName":"archive","mode1":"$it","encodeParentDirectoryName1":"archive","isDeleteOriginalAfterEncode":false}}""") } ?: MockResponse().setResponseCode(404)
+                    "/api/config" -> json("""{"encode":["HEVC test","other test"]}""")
                     "/api/schedules" -> json("""[{"channel":{"id":101,"networkId":1,"serviceId":1,"channelType":"GR","name":"テスト局"},"programs":[${program()}]}]""")
                     "/api/schedules/detail/900" -> when {
                         detailStatus != 200 -> MockResponse().setResponseCode(detailStatus)
@@ -67,6 +71,7 @@ class EpgStationRuleCreationTest {
                         body.addProperty("id", 7)
                         if (!body.getAsJsonObject("searchOption").has("ignoreKeyRegExp")) body.getAsJsonObject("searchOption").addProperty("ignoreKeyRegExp", false)
                         if (savedWrong) body.getAsJsonObject("searchOption").addProperty("keyword", "別番組")
+                        if (savedWrongEncoder) body.getAsJsonObject("encodeOption").addProperty("mode1", "other test")
                         json(body.toString())
                     }
                     "/api/reserves" -> if (!reflect) json("""{"reserves":[],"total":0}""") else
@@ -108,6 +113,30 @@ class EpgStationRuleCreationTest {
         val p = prepare(true)
         service.confirm(p.token).getOrThrow()
         assertTrue(saved.contains("\"week\":127"))
+    }
+    @Test fun weeklyRulePreviewsAndSavesDefaultEncoder() = runBlocking {
+        presetMode = "HEVC test"
+        val p = prepare()
+        assertTrue(p.recordingSettingsDescription.contains("HEVC test"))
+        assertTrue(p.recordingSettingsDescription.contains("自動削除: オフ"))
+        assertTrue(service.confirm(p.token).isSuccess)
+        val body = JsonParser().parse(saved).asJsonObject
+        assertEquals("HEVC test", body.getAsJsonObject("encodeOption")["mode1"].asString)
+        assertEquals("archive", body.getAsJsonObject("saveOption")["parentDirectoryName"].asString)
+    }
+    @Test fun changedDefaultRequiresNewConfirmation() = runBlocking {
+        presetMode = "HEVC test"
+        val p = prepare()
+        presetMode = "other test"
+        assertTrue(service.confirm(p.token).isFailure)
+        assertEquals(0, posts)
+    }
+    @Test fun encoderNotSavedCorrectlyDoesNotReportSuccessOrResend() = runBlocking {
+        presetMode = "HEVC test"
+        val p = prepare()
+        savedWrongEncoder = true
+        assertTrue(service.confirm(p.token).isFailure)
+        assertEquals(1, posts)
     }
     @Test fun serverCanNormalizeOmittedFalseOptions() = runBlocking {
         val c = service.candidates("テスト番組").getOrThrow().single()

@@ -20,6 +20,7 @@ class EpgStationReserveRepository @Inject constructor(
     private val ruleCancellation: EpgStationRuleCancellation,
     private val ruleCreation: EpgStationRuleCreation
 ) : ReserveProvider {
+    private val recordingPresets = EpgStationRecordingPresets(api)
     private companion object {
         private const val TAG = "EpgStationReserveRepo"
     }
@@ -99,13 +100,7 @@ class EpgStationReserveRepository @Inject constructor(
         val programId = request.programId.toLongOrNull()
             ?: return Result.failure(Exception("EPGStationでは この形式の番組IDから予約できません。"))
         return runCatching {
-            api.addReserve(
-                EsManualReserveOption(
-                    programId = programId,
-                    allowEndLack = request.recordSettings.allowEndLack
-                )
-            )
-                .requireSuccessful("予約の追加")
+            recordingPresets.addManual(programId, request.recordSettings.allowEndLack)
             Unit
         }
     }
@@ -369,7 +364,12 @@ class EpgStationReserveRepository @Inject constructor(
                 // ReserveOptionChecker.checkReserveOption())。以前は常に期間を送っていたため、
                 // 重複回避を使わないルールはKomorebiから追加・更新できなかった。
                 periodToAvoidDuplicate = search.duplicateTitleCheckPeriodDays.takeIf { avoidDuplicate },
-                tags = base?.reserveOption?.tags
+                tags = base?.reserveOption?.tags,
+                priority = base?.reserveOption?.priority,
+                conflictPolicy = base?.reserveOption?.conflictPolicy,
+                startMarginSec = base?.reserveOption?.startMarginSec,
+                endMarginSec = base?.reserveOption?.endMarginSec,
+                finishCommandName = base?.reserveOption?.finishCommandName
             ),
             saveOption = base?.saveOption,
             encodeOption = base?.encodeOption
@@ -407,7 +407,7 @@ class EpgStationReserveRepository @Inject constructor(
     /** 自動予約条件を追加する。 */
     override suspend fun addReservationCondition(request: ReservationConditionAddRequest): Result<Unit> {
         return runCatching {
-            api.addRule(mapRuleBody(request.programSearchCondition))
+            api.addRule(recordingPresets.rule(mapRuleBody(request.programSearchCondition), recordingPresets.loadDefault()))
                 .requireSuccessful("自動予約条件の追加")
             Unit
         }

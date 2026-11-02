@@ -1,6 +1,7 @@
 package com.beeregg2001.komorebi.data.repository.epgstation
 
 import com.beeregg2001.komorebi.data.api.EpgStationApi
+import com.google.gson.JsonParser
 import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.io.IOException
@@ -12,7 +13,13 @@ class EpgStationRecordingDeletion @Inject constructor(private val api: EpgStatio
         return try {
             require(recordedId > 0) { "録画 ID が不正です。" }
             // 一覧のキャッシュではなく、実行直前の保護・録画・エンコード状態を確認する。
-            val recorded = api.getRecordedDetail(recordedId)
+            val recorded = try {
+                api.getRecordedDetail(recordedId)
+            } catch (e: HttpException) {
+                // A missing database row is already deleted. A generic proxy/auth 404 is not proof.
+                if (isMissingRecording(e)) return Result.success(Unit)
+                throw e
+            }
             check(recorded.id == recordedId) { "録画情報を確認できないため削除を中止しました。" }
             check(!recorded.isProtected) { "保護されている録画です。EPGStationで保護を解除してからお試しください。" }
             check(!recorded.isRecording) { "録画中の番組は削除できません。録画の終了後にお試しください。" }
@@ -36,5 +43,13 @@ class EpgStationRecordingDeletion @Inject constructor(private val api: EpgStatio
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun isMissingRecording(error: HttpException): Boolean {
+        if (error.code() != 404) return false
+        return runCatching {
+            val body = JsonParser().parse(error.response()?.errorBody()?.string()).asJsonObject
+            body["code"].asInt == 404 && body["message"].asString.equals("recorded is not Found", ignoreCase = true)
+        }.getOrDefault(false)
     }
 }
