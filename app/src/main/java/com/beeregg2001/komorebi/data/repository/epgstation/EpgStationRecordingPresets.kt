@@ -47,7 +47,10 @@ class EpgStationRecordingPresets(private val api: EpgStationApi) {
         val p = preset?.settings ?: return base
         // allowEndLack is explicitly editable in Komorebi's manual-reservation dialog.
         return base.copy(saveOption = save(p), encodeOption = encode(p), priority = p.priority,
-            conflictPolicy = p.conflictPolicy, startMarginSec = p.startMarginSec, endMarginSec = p.endMarginSec,
+            // The server prioritizes conflictPolicy over allowEndLack. Let it derive the policy
+            // when the user explicitly chose a different end-lack option in the dialog.
+            conflictPolicy = p.conflictPolicy.takeIf { base.allowEndLack == p.allowEndLack },
+            startMarginSec = p.startMarginSec, endMarginSec = p.endMarginSec,
             tags = p.tags, finishCommandName = p.finishCommandName)
     }
 

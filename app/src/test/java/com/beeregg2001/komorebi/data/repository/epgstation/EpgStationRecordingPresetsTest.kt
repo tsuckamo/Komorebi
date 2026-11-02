@@ -70,6 +70,15 @@ class EpgStationRecordingPresetsTest {
         assertTrue(runCatching { presets.addManual(900, true) }.isFailure)
         assertEquals(2, server.requestCount)
     }
+    @Test fun explicitEndLackChoiceCannotBeOverriddenByPresetPolicy() {
+        val preset = EsRecordingPreset(1, "test", true, EsRecordingPresetSettings(
+            mode1 = "HEVC test", allowEndLack = true, conflictPolicy = "ALLOW_END_LACK"))
+        val changed = presets.manual(EsManualReserveOption(900, false), preset)
+        assertFalse(changed.allowEndLack)
+        assertNull(changed.conflictPolicy)
+        assertEquals("HEVC test", changed.encodeOption!!.mode1)
+        assertEquals("ALLOW_END_LACK", presets.manual(EsManualReserveOption(900, true), preset).conflictPolicy)
+    }
     @Test fun serverErrorCannotSilentlyCreateRawTsReservation() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(500))
         assertTrue(runCatching { presets.addManual(900, true) }.isFailure)
