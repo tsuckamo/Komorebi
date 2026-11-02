@@ -257,7 +257,7 @@ class SettingsViewModel @Inject constructor(
     val commentDefaultDisplay: StateFlow<String> = settingsRepository.commentDefaultDisplay.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
-        "ON"
+        "OFF"
     )
     val liveQuality: StateFlow<String> = settingsRepository.liveQuality.stateIn(
         viewModelScope,

@@ -113,7 +113,7 @@ fun rememberSettingPreferences(repository: SettingsRepository): SettingPreferenc
         commentFontSize = repository.commentFontSize.collectAsState(initial = "1.0").value,
         commentOpacity = repository.commentOpacity.collectAsState(initial = "1.0").value,
         commentMaxLines = repository.commentMaxLines.collectAsState(initial = "0").value,
-        commentDefaultDisplay = repository.commentDefaultDisplay.collectAsState(initial = "ON").value,
+        commentDefaultDisplay = repository.commentDefaultDisplay.collectAsState(initial = "OFF").value,
         liveQuality = repository.liveQuality.collectAsState(initial = "1080p-60fps").value,
         videoQuality = repository.videoQuality.collectAsState(initial = "1080p-60fps").value,
         liveSubtitleDefault = repository.liveSubtitleDefault.collectAsState(initial = "ON").value,
